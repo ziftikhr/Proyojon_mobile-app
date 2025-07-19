@@ -10,6 +10,7 @@ import Updates from './screens/Updates';
 import Settings from './screens/Settings';
 import NotFound from './screens/NotFound';
 import Cart from './screens/Cart';
+import Chats from './screens/Chats'; // Assuming you have a Chat screen
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -30,9 +31,14 @@ function HomeTabs({ navigation }) {
         tabBarInactiveTintColor: 'gray',
         // headerShown: false,
         headerRight: () => (
-          <Pressable onPress={() => navigation.navigate('Profile', {user: 'John Doe'})} style={{ padding: 10 }}>
-            <Ionicons name="person" size={24} color="#800d0dff" />
-          </Pressable>
+          <>
+            <Pressable onPress={() => navigation.navigate('Profile', {user: 'John Doe'})} style={{ padding: 10 }}>
+              <Ionicons name="person" size={24} color="#800d0dff" />
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('Chats')} style={{ padding: 10 }}>
+              <Ionicons name="chatbubbles" size={24} color="#800d0dff" />
+            </Pressable>
+          </>
         ),
       })}
     >
@@ -73,6 +79,12 @@ export default function Navigation() {
         options={({ route }) => ({
             title: route.params?.user ? `@${route.params.user}` : 'Profile',
         })}
+      />
+
+      <Stack.Screen
+        name="Chats"
+        component={Chats}
+        options={{ title: 'Chats' }}
       />
 
       <Stack.Screen
