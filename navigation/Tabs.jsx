@@ -11,6 +11,8 @@ import Settings from './screens/Settings';
 import NotFound from './screens/NotFound';
 import Cart from './screens/Cart';
 import Chats from './screens/Chats'; // Assuming you have a Chat screen
+import Login from './screens/Login';
+import Signup from './screens/Signup';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -51,7 +53,17 @@ function HomeTabs({ navigation }) {
 
 export default function Navigation() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator initialRouteName="Login">
+      <Stack.Screen
+        name="Login"
+        component={Login}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Signup"
+        component={Signup}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name="HomeTabs"
         options={{ headerShown: false }}
