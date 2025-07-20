@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../FirebaseConfig';
 import { useAtom } from 'jotai';
@@ -24,7 +24,7 @@ const Login = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior="padding">
       <Text style={styles.title}>Login</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <TextInput
@@ -48,7 +48,7 @@ const Login = ({ navigation }) => {
       <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
         <Text style={styles.link}>Don't have an account? Sign up</Text>
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
