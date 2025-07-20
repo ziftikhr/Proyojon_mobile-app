@@ -13,7 +13,8 @@ const Signup = ({ navigation }) => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       // Navigate to main app screen or home after successful signup
-      navigation.replace('HomeTabs');
+      alert('Signup successful!');
+      navigation.goBack();
     } catch (err) {
       setError(err.message);
     }
@@ -41,7 +42,7 @@ const Signup = ({ navigation }) => {
         textContentType="password"
       />
       <Button title="Sign Up" onPress={handleSignup} />
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+      <TouchableOpacity onPress={() => navigation.goBack()}>
         <Text style={styles.link}>Already have an account? Login</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
