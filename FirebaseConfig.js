@@ -1,7 +1,8 @@
-// Import the functions you need from the SDKs you need
+
 import { initializeApp, getApps } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 import ReactNativeAsyncStorage  from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -30,6 +31,7 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });
+const db = getFirestore(app);
 
 let analytics;
 isSupported().then((supported) => {
@@ -38,4 +40,4 @@ isSupported().then((supported) => {
   }
 });
 
-export { app, auth };
+export { app, auth, db };
