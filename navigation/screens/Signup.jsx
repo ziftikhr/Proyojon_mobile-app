@@ -111,6 +111,7 @@ const Signup = ({ navigation }) => {
         email,
         facebook,
         instagram,
+        linkedin,
         location: {
           country: selectedCountry,
           state: selectedState,
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: 200,
-    height: 120,
+    height: 100,
     alignSelf: 'center',
     marginBottom: 20,
     resizeMode: 'contain',

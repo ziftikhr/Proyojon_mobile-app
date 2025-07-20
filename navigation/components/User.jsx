@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 
 const User = ({ user, selectUser, chat, online, user1, unreadCount }) => {
-  const isSelected = chat && user.other.uid === chat.other.uid && user.ad.adId === chat.ad.adId;
+  const isSelected =
+  chat?.other?.uid === user.other.uid && chat?.ad?.adId === user.ad.adId;
+
 
   return (
     <TouchableOpacity
