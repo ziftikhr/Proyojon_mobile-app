@@ -1,11 +1,15 @@
 
-import { Text } from '@react-navigation/elements';
-import { StyleSheet, View, Button } from 'react-native';
-import React from 'react';
+import { Button, Text } from '@react-navigation/elements';
+import { StyleSheet, View } from 'react-native';
+import React from 'react'
 import { auth } from '../../FirebaseConfig';
+import { signOut } from 'firebase/auth';
+import { useAtom } from 'jotai';
+import { userAtom } from '../../atoms/userAtom';
 
-export default function Profile({ route, navigation }) {
-  const { user } = route.params || {};
+export default function Profile({ navigation }) {
+  const [user, setUser] = useAtom(userAtom);
+
 
   const handleLogout = async () => {
     try {
@@ -18,8 +22,17 @@ export default function Profile({ route, navigation }) {
 
   return (
     <View style={styles.container}>
+
       <Text style={styles.text}>Welcome, {user || 'Guest'}!</Text>
       <Button title="Logout" onPress={handleLogout} />
+
+      <Text style={styles.text}>Welcome, {user?.email || 'Guest'}!</Text>
+      {user?.email ? (
+        <Button title="Logout" onPress={handleLogout} >Logout</Button>
+      ) : (
+        <Button title="Login" onPress={() => {navigation.navigate('Login')}} >Login</Button>
+      )}
+
     </View>
   );
 }

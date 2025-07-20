@@ -13,20 +13,23 @@ import Cart from './screens/Cart';
 import Chats from './screens/Chats';
 import Login from './screens/Login';
 import Signup from './screens/Signup';
+import { useAtom } from 'jotai';
+import { userAtom } from '../atoms/userAtom';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function HomeTabs({ navigation }) {
+  const [user] = useAtom(userAtom); // Assuming userAtom is defined in atoms/userAtom.js
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size }) => {
-          let iconName;
-          if (route.name === 'Home') iconName = 'home';
-          else if (route.name === 'Cart') iconName = 'cart';
+    screenOptions={({ route }) => ({
+      tabBarIcon: ({ color, size }) => {
+        let iconName;
+        if (route.name === 'Home') iconName = 'home';
+        else if (route.name === 'Cart') iconName = 'cart';
           else if (route.name === 'Updates') iconName = 'notifications';
-
+          
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#800d0dff',
@@ -34,7 +37,7 @@ function HomeTabs({ navigation }) {
         // headerShown: false,
         headerRight: () => (
           <>
-            <Pressable onPress={() => navigation.navigate('Profile', {user: 'John Doe'})} style={{ padding: 10 }}>
+            <Pressable onPress={() => navigation.navigate('Profile', {user: user?.email})} style={{ padding: 10 }}>
               <Ionicons name="person" size={24} color="#800d0dff" />
             </Pressable>
             <Pressable onPress={() => navigation.navigate('Chats')} style={{ padding: 10 }}>
@@ -43,7 +46,7 @@ function HomeTabs({ navigation }) {
           </>
         ),
       })}
-    >
+      >
       <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="Updates" component={Updates} />
       <Tab.Screen name="Cart" component={Cart} />
@@ -51,9 +54,10 @@ function HomeTabs({ navigation }) {
   );
 }
 
-export default function Navigation() {
+export default function Tabs() {
+  const [user] = useAtom(userAtom); // Assuming userAtom is defined in atoms/userAtom.js
   return (
-    <Stack.Navigator initialRouteName="Login">
+    <Stack.Navigator initialRouteName="HomeTabs">
       <Stack.Screen
         name="Login"
         component={Login}
@@ -88,9 +92,10 @@ export default function Navigation() {
       <Stack.Screen
         name="Profile"
         component={Profile}
-        options={({ route }) => ({
-            title: route.params?.user ? `@${route.params.user}` : 'Profile',
-        })}
+        // options={({ route }) => ({
+        //     title: route.params?.user ? `@${route.params.user}` : 'Profile',
+        // })}
+        options={{ title: user? `@${user?.uid}` : 'Profile' }}
       />
 
       <Stack.Screen
