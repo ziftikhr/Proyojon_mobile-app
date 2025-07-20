@@ -13,7 +13,7 @@ const Signup = ({ navigation }) => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       // Navigate to main app screen or home after successful signup
-      navigation.replace('Home');
+      navigation.replace('HomeTabs');
     } catch (err) {
       setError(err.message);
     }
