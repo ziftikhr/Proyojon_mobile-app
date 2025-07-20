@@ -3,16 +3,26 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import ReactNativeAsyncStorage  from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
+const {
+  firebaseApiKey,
+  firebaseAuthDomain,
+  firebaseProjectId,
+  firebaseStorageBucket,
+  firebaseMessagingSenderId,
+  firebaseAppId,
+  firebaseMeasurementId
+} = Constants.expoConfig.extra;
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCU5IBoZE7jZTvSKfTCnj5SXLlJuPBcrbU",
-  authDomain: "need-proyojon.firebaseapp.com",
-  projectId: "need-proyojon",
-  storageBucket: "need-proyojon.firebasestorage.app",
-  messagingSenderId: "962322311450",
-  appId: "1:962322311450:web:f5b2263dc08222690aa4a3",
-  measurementId: "G-Q1J035BWHJ"
+  apiKey: firebaseApiKey,
+  authDomain: firebaseAuthDomain,
+  projectId: firebaseProjectId,
+  storageBucket: firebaseStorageBucket,
+  messagingSenderId: firebaseMessagingSenderId,
+  appId: firebaseAppId,
+  measurementId: firebaseMeasurementId
 };
 
 // Initialize Firebase

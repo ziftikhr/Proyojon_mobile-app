@@ -10,7 +10,7 @@ import Updates from './screens/Updates';
 import Settings from './screens/Settings';
 import NotFound from './screens/NotFound';
 import Cart from './screens/Cart';
-import Chats from './screens/Chats'; // Assuming you have a Chat screen
+import Chats from './screens/Chats';
 import Login from './screens/Login';
 import Signup from './screens/Signup';
 
