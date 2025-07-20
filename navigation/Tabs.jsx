@@ -95,7 +95,7 @@ export default function Tabs() {
         // options={({ route }) => ({
         //     title: route.params?.user ? `@${route.params.user}` : 'Profile',
         // })}
-        options={{ title: user? `@${user?.uid}` : 'Profile' }}
+        options={{ title: user? `@${user?.name}` : 'Profile' }}
       />
 
       <Stack.Screen

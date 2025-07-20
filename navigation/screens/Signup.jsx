@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Image} from 'react-native';
 
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../FirebaseConfig';
@@ -26,11 +26,15 @@ const Signup = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../../assets/proyojon.png')} style={styles.logo} />
-    
-    <KeyboardAvoidingView style={styles.container} behavior="padding">
-      <Text style={styles.title}>Sign Up</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={90}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <Image source={require('../../assets/proyojon.png')} style={styles.logo} />
+        <Text style={styles.title}>Sign Up</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <TextInput
         style={styles.input}
@@ -57,16 +61,17 @@ const Signup = ({ navigation }) => {
           <Ionicons
             name={showPassword ? 'eye-off' : 'eye'}
             size={24}
-            color="blue"
+            color="maroon"
           />
         </TouchableOpacity>
       </View>
-      <Button title="Sign Up" onPress={handleSignup} />
+      <Button title="Sign Up" color="maroon" onPress={handleSignup} />
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Text style={styles.link}>Already have an account? Login</Text>
       </TouchableOpacity>
-    </KeyboardAvoidingView>
     </View>
+    </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 

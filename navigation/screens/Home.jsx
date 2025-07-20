@@ -6,11 +6,9 @@ export default function Home() {
   return (
     <View style={styles.container}>
       <Text>Home Screen</Text>
-      <Button screen="Profile" params={{ user: 'jane' }}>
-        Go to Profile
-      </Button>
-      <Button screen="Settings">Go to Settings</Button>
-      <Button screen="NotFound">Go to Not Found</Button>
+      <Button screen="Profile" color='green'>Go to Profile</Button>
+      <Button screen="Settings" color='gray'>Go to Settings</Button>
+      <Button screen="NotFound" color='crimson'>Go to Not Found</Button>
     </View>
   )
 }

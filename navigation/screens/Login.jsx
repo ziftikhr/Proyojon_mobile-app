@@ -3,9 +3,10 @@ import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Image, Key
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../FirebaseConfig';
+import { auth, db } from '../../FirebaseConfig';
 import { useAtom } from 'jotai';
 import { userAtom } from '../../atoms/userAtom';
+import { doc, getDoc } from 'firebase/firestore';
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -19,12 +20,24 @@ const Login = ({ navigation }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       // Navigate to main app screen or home after successful login
-      setUser(userCredential.user);
+
+      setUser(await getUserProfile(userCredential.user.uid));
       navigation.goBack();
     } catch (err) {
       setError(err.message);
     }
   };
+  const getUserProfile = async (userId) => {
+  const docRef = doc(db, "users", userId);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    return docSnap.data();
+  } else {
+    throw new Error("User not found");
+  }
+  };
+
 
   return (
     <KeyboardAvoidingView
@@ -62,11 +75,11 @@ const Login = ({ navigation }) => {
               <Ionicons
                 name={showPassword ? 'eye-off' : 'eye'}
                 size={24}
-                color="blue"
+                color="maroon"
               />
             </TouchableOpacity>
           </View>
-          <Button title="Login" onPress={handleLogin} />
+          <Button title="Login" color="maroon" onPress={handleLogin} />
           <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
             <Text style={styles.link}>Don't have an account? Sign up</Text>
           </TouchableOpacity>

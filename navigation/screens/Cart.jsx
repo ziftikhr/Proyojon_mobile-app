@@ -1,18 +1,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, Image, ActivityIndicator } from 'react-native';
-import { auth, db } from '../../FirebaseConfig';
+import { db } from '../../FirebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { userAtom } from '../../atoms/userAtom';
+import { useAtom } from 'jotai';
 
 export default function Cart() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user] = useAtom(userAtom); // Assuming userAtom is defined in atoms/userAtom.js
 
   const fetchUserAds = async () => {
     try {
       setLoading(true);
-      const userId = auth.currentUser?.uid;
+      const userId = user?.uid;
       if (!userId) {
         setAds([]);
         setLoading(false);
@@ -36,7 +39,7 @@ export default function Cart() {
 
   useEffect(() => {
     fetchUserAds();
-  }, []);
+  }, [user]);
 
   const renderAdItem = ({ item }) => (
     <View style={styles.adCard}>
@@ -59,7 +62,7 @@ export default function Cart() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="maroon" />
       </View>
     );
   }

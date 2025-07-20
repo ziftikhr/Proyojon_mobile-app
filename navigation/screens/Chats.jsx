@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
-import { auth, db } from '../../FirebaseConfig';
+import { db } from '../../FirebaseConfig';
 import {
   collection,
   query,
@@ -18,6 +18,8 @@ import User from '../components/User';
 import Message from '../components/Message';
 import MessageForm from '../components/MessageForm';
 import { Ionicons } from '@expo/vector-icons';
+import { useAtom } from 'jotai';
+import { userAtom } from '../../atoms/userAtom';
 
 const Chats = ({ navigation, route }) => {
   const [chat, setChat] = useState(null);
@@ -25,7 +27,8 @@ const Chats = ({ navigation, route }) => {
   const [users, setUsers] = useState([]);
   const [msgs, setMsgs] = useState([]);
   const [online, setOnline] = useState({});
-  const user1 = auth.currentUser?.uid;
+  const [user] = useAtom(userAtom);
+  const user1 = user?.uid;
   const currentChatIdRef = useRef(null);
 
   const [unreadCount, setUnreadCount] = useState(0);
