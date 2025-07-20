@@ -118,12 +118,12 @@ export default function Profile({ navigation }) {
     ) : (
       <Ionicons name="person" size={100} color="#ccc" />
     ),
-    location: 'New York, NY',
+    location: (user?.location?.city ? user?.location?.city + ', ' : '') + (user?.location?.state ? user?.location?.state + ', ' : '') + (user?.location?.country ? user?.location?.country : 'Not specified'),
     website: `${user?.email || 'https://example.com'}`,
     social: {
-      twitter: user?.twitter || 'https://twitter.com/johndoe',
-      github: user?.github || 'https://github.com/johndoe',
-      linkedin: user?.linkedin || 'https://linkedin.com/in/johndoe',
+      facebook: user?.facebook || 'https://facebook.com',
+      instagram: user?.instagram || 'https://instagram.com',
+      linkedin: user?.linkedin || 'https://linkedin.com',
     },
     // posts: [
     //   { id: 1, content: 'Hello World!', image: 'https://via.placeholder.com/150' },
@@ -164,14 +164,14 @@ export default function Profile({ navigation }) {
               </TouchableOpacity>
             )}
             <View style={styles.socialIcons}>
-              {profile.social.twitter && (
-                <TouchableOpacity onPress={() => openLink(profile.social.twitter)}>
-                  <Ionicons name="logo-twitter" size={30} color="black" />
+              {profile.social.facebook && (
+                <TouchableOpacity onPress={() => openLink(profile.social.facebook)}>
+                  <Ionicons name="logo-facebook" size={30} color="black" />
                 </TouchableOpacity>
               )}
-              {profile.social.github && (
-                <TouchableOpacity onPress={() => openLink(profile.social.github)}>
-                  <Ionicons name="logo-github" size={30} color="black" />
+              {profile.social.instagram && (
+                <TouchableOpacity onPress={() => openLink(profile.social.instagram)}>
+                  <Ionicons name="logo-instagram" size={30} color="black" />
                 </TouchableOpacity>
               )}
               {profile.social.linkedin && (
