@@ -34,7 +34,7 @@ const Message = ({ msg, user1 }) => {
           {msg.text}
         </Text>
         {msg.createdAt && (
-          <Text style={styles.timeText}>
+          <Text style={[styles.messageText, isSender ? styles.timeTextRight : styles.timeTextLeft]}>
             {formatDate(msg.createdAt)}
           </Text>
         )}
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e5ea',
   },
   bubbleRight: {
-    backgroundColor: '#007aff',
+    backgroundColor: 'maroon',
   },
   messageText: {
     fontSize: 16,
@@ -75,7 +75,13 @@ const styles = StyleSheet.create({
   textRight: {
     color: '#fff',
   },
-  timeText: {
+  timeTextRight: {
+    fontSize: 10,
+    color: '#ccc',
+    marginTop: 4,
+    textAlign: 'left',
+  },
+  timeTextLeft: {
     fontSize: 10,
     color: '#666',
     marginTop: 4,

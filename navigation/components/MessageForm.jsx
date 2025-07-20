@@ -4,11 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 const MessageForm = ({ text, setText, handleSubmit }) => {
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={80}
-      style={styles.container}
-    >
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -20,10 +15,9 @@ const MessageForm = ({ text, setText, handleSubmit }) => {
           onSubmitEditing={handleSubmit}
         />
         <TouchableOpacity onPress={handleSubmit} style={styles.sendButton}>
-          <Ionicons name="send" size={24} color="#007aff" />
+          <Ionicons name="send" size={24} color="maroon" />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
   );
 };
 

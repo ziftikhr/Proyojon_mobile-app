@@ -10,9 +10,11 @@ import Updates from './screens/Updates';
 import Settings from './screens/Settings';
 import NotFound from './screens/NotFound';
 import Cart from './screens/Cart';
-import Chats from './screens/Chats';
 import Login from './screens/Login';
 import Signup from './screens/Signup';
+import ChatUsersScreen from './screens/ChatUsersScreen';
+import ChatMessagesScreen from './screens/ChatMessagesScreen';
+import ChatDetailsScreen from './screens/ChatDetailsScreen';
 import { useAtom } from 'jotai';
 import { userAtom } from '../atoms/userAtom';
 
@@ -40,7 +42,7 @@ function HomeTabs({ navigation }) {
             <Pressable onPress={() => navigation.navigate('Profile', {user: user?.email})} style={{ padding: 10 }}>
               <Ionicons name="person" size={24} color="#800d0dff" />
             </Pressable>
-            <Pressable onPress={() => navigation.navigate('Chats')} style={{ padding: 10 }}>
+            <Pressable onPress={() => navigation.navigate('ChatUsers')} style={{ padding: 10 }}>
               <Ionicons name="chatbubbles" size={24} color="#800d0dff" />
             </Pressable>
           </>
@@ -95,13 +97,7 @@ export default function Tabs() {
         // options={({ route }) => ({
         //     title: route.params?.user ? `@${route.params.user}` : 'Profile',
         // })}
-        options={{ title: user? `@${user?.uid}` : 'Profile' }}
-      />
-
-      <Stack.Screen
-        name="Chats"
-        component={Chats}
-        options={{ title: 'Chats' }}
+        options={{ title: user? `@${user?.name}` : 'Profile' }}
       />
 
       <Stack.Screen
@@ -109,6 +105,10 @@ export default function Tabs() {
         component={NotFound}
         options={{ title: '404' }}
       />
+
+      <Stack.Screen name="ChatUsers" component={ChatUsersScreen} options={{ title: 'Chats' }} />
+      <Stack.Screen name="ChatMessages" component={ChatMessagesScreen} />
+      <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} options={{ title: 'Chat Details' }} />
     </Stack.Navigator>
   );
 }

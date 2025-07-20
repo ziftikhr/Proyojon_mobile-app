@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 
 const User = ({ user, selectUser, chat, online, user1, unreadCount }) => {
-  const isSelected = chat && user.other.uid === chat.other.uid && user.ad.adId === chat.ad.adId;
+  const isSelected =
+  chat?.other?.uid === user.other.uid && chat?.ad?.adId === user.ad.adId;
+
 
   return (
     <TouchableOpacity
@@ -27,6 +29,9 @@ const User = ({ user, selectUser, chat, online, user1, unreadCount }) => {
           <Text style={styles.unreadText}>{unreadCount}</Text>
         </View>
       )}
+      <View style={styles.avatarWrapper}>
+        <Image source={{ uri: user.ad.images[0]?.url }} style={styles.avatarRight} />
+      </View>
     </TouchableOpacity>
   );
 };
@@ -61,6 +66,12 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
+  },
+  avatarRight: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    marginLeft: 'auto',
   },
   avatarPlaceholder: {
     width: 46,
