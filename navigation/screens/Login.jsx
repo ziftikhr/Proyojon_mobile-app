@@ -2,18 +2,22 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../FirebaseConfig';
+import { useAtom } from 'jotai';
+import { userAtom } from '../../atoms/userAtom';
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [user, setUser] = useAtom(userAtom);
 
   const handleLogin = async () => {
     setError('');
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       // Navigate to main app screen or home after successful login
-      navigation.replace('HomeTabs');
+      setUser(userCredential.user);
+      navigation.goBack();
     } catch (err) {
       setError(err.message);
     }
