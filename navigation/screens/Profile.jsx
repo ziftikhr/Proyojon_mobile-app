@@ -23,9 +23,7 @@ export default function Profile({ navigation }) {
   return (
     <View style={styles.container}>
 
-      <Text style={styles.text}>Welcome, {user || 'Guest'}!</Text>
-      <Button title="Logout" onPress={handleLogout} />
-
+      
       <Text style={styles.text}>Welcome, {user?.email || 'Guest'}!</Text>
       {user?.email ? (
         <Button title="Logout" onPress={handleLogout} >Logout</Button>
