@@ -10,7 +10,6 @@ import Updates from './screens/Updates';
 import Settings from './screens/Settings';
 import NotFound from './screens/NotFound';
 import Cart from './screens/Cart';
-import Chats from './screens/Chats';
 import Login from './screens/Login';
 import Signup from './screens/Signup';
 import ChatUsersScreen from './screens/ChatUsersScreen';
@@ -99,12 +98,6 @@ export default function Tabs() {
         //     title: route.params?.user ? `@${route.params.user}` : 'Profile',
         // })}
         options={{ title: user? `@${user?.name}` : 'Profile' }}
-      />
-
-      <Stack.Screen
-        name="Chats"
-        component={Chats}
-        options={{ title: 'Chats' }}
       />
 
       <Stack.Screen

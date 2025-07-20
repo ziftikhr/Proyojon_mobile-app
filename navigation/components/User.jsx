@@ -29,6 +29,9 @@ const User = ({ user, selectUser, chat, online, user1, unreadCount }) => {
           <Text style={styles.unreadText}>{unreadCount}</Text>
         </View>
       )}
+      <View style={styles.avatarWrapper}>
+        <Image source={{ uri: user.ad.images[0]?.url }} style={styles.avatarRight} />
+      </View>
     </TouchableOpacity>
   );
 };
@@ -63,6 +66,12 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
+  },
+  avatarRight: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    marginLeft: 'auto',
   },
   avatarPlaceholder: {
     width: 46,
