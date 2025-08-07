@@ -54,7 +54,6 @@ function HomeTabs({ navigation }) {
       <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="Updates" component={Updates} />
       <Tab.Screen name="Cart" component={Cart} />
-      <Tab.Screen name="Home2" component={HomeStack} />
     </Tab.Navigator>
   );
 }
