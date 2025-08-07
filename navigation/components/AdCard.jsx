@@ -1,17 +1,22 @@
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 const AdCard = ({ ad }) => {
+  const navigation = useNavigation();
   const imageUrl = ad.images?.[0]?.url || "https://via.placeholder.com/150";
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      onPress={() => navigation.navigate("AdDetails", { adId: ad.id })}
+      style={styles.card}
+    >
       <Image source={{ uri: imageUrl }} style={styles.image} />
       <Text style={styles.title}>{ad.title}</Text>
       <Text style={styles.meta}>
         {ad.category} · {ad.location || "Unknown"}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 };
 

@@ -17,6 +17,8 @@ import ChatMessagesScreen from './screens/ChatMessagesScreen';
 import ChatDetailsScreen from './screens/ChatDetailsScreen';
 import { useAtom } from 'jotai';
 import { userAtom } from '../atoms/userAtom';
+import HomeStack from './HomeStack';
+import DetailedAdScreen from "./screens/DetailedAdScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -52,6 +54,7 @@ function HomeTabs({ navigation }) {
       <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="Updates" component={Updates} />
       <Tab.Screen name="Cart" component={Cart} />
+      <Tab.Screen name="Home2" component={HomeStack} />
     </Tab.Navigator>
   );
 }
@@ -70,6 +73,12 @@ export default function Tabs() {
         component={Signup}
         options={{ headerShown: false }}
       />
+        <Stack.Screen
+          name="AdDetails"
+          component={DetailedAdScreen}
+          options={{ title: "Ad Details" }}
+        />
+
       <Stack.Screen
         name="HomeTabs"
         options={{ headerShown: false }}
