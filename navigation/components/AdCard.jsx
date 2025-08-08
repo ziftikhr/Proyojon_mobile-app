@@ -4,12 +4,15 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { doc, onSnapshot, setDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db, auth } from "../../FirebaseConfig"; 
+import { useAtom } from "jotai";
+import { userAtom } from "../../atoms/userAtom";
 
 const AdCard = ({ ad }) => {
   const navigation = useNavigation();
-  const imageUrl = ad.images?.[0]?.url || "https://via.placeholder.com/150";
+  const imageUrl = ad.images?.[0]?.url || "https://dummyimage.com/300x200/cccccc/000000&text=No+Image";
   const [liked, setLiked] = useState(false);
   const [users, setUsers] = useState([]);
+  const [user] = useAtom(userAtom);
 
   useEffect(() => {
     const docRef = doc(db, "favorites", ad.id);
@@ -18,7 +21,7 @@ const AdCard = ({ ad }) => {
       if (snapshot.exists()) {
         const favUsers = snapshot.data().users || [];
         setUsers(favUsers);
-        setLiked(favUsers.includes(auth.currentUser.uid));
+        setLiked(favUsers.includes(user?.uid));
       } else {
         setUsers([]);
         setLiked(false);
@@ -30,7 +33,7 @@ const AdCard = ({ ad }) => {
 
   const toggleLike = async () => {
     const docRef = doc(db, "favorites", ad.id);
-    const uid = auth.currentUser.uid;
+    const uid = user?.uid;
 
     try {
       if (liked) {
@@ -59,7 +62,7 @@ const AdCard = ({ ad }) => {
         {ad.category} · {ad.location || "Unknown"}
       </Text>
 
-      <TouchableOpacity onPress={toggleLike} style={styles.heartButton}>
+      <TouchableOpacity onPress={toggleLike} style={styles.heartButton} disabled={!user}>
         <Ionicons
           name={liked ? "heart" : "heart-outline"}
           size={24}

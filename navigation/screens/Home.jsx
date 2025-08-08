@@ -5,15 +5,29 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
+  ActivityIndicator,
 } from "react-native";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  startAfter,
+} from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
 import AdCard from "../components/AdCard";
 
 const HomeScreen = () => {
   const [ads, setAds] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [lastVisible, setLastVisible] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const ADS_PER_PAGE = 10;
 
   const categories = [
     { value: "", label: "All" },
@@ -27,20 +41,75 @@ const HomeScreen = () => {
     { value: "Miscellaneous", label: "Miscellaneous" },
   ];
 
+  // Fetch first batch
   const getAds = async () => {
     try {
+      setRefreshing(true);
       const adsRef = collection(db, "ads");
       const q = selectedCategory
-        ? query(adsRef, where("category", "==", selectedCategory), orderBy("publishedAt", "desc"))
-        : query(adsRef, orderBy("publishedAt", "desc"));
+        ? query(
+            adsRef,
+            where("category", "==", selectedCategory),
+            orderBy("publishedAt", "desc"),
+            limit(ADS_PER_PAGE)
+          )
+        : query(
+            adsRef,
+            orderBy("publishedAt", "desc"),
+            limit(ADS_PER_PAGE)
+          );
+
       const adDocs = await getDocs(q);
       const adsData = adDocs.docs.map((doc) => ({
         ...doc.data(),
         id: doc.id,
       }));
+
       setAds(adsData);
+      setLastVisible(adDocs.docs[adDocs.docs.length - 1] || null);
+      setHasMore(adDocs.docs.length === ADS_PER_PAGE);
     } catch (error) {
       console.error("Error fetching ads:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Fetch next batch
+  const loadMoreAds = async () => {
+    if (!hasMore || loadingMore || !lastVisible) return;
+
+    try {
+      setLoadingMore(true);
+      const adsRef = collection(db, "ads");
+      const q = selectedCategory
+        ? query(
+            adsRef,
+            where("category", "==", selectedCategory),
+            orderBy("publishedAt", "desc"),
+            startAfter(lastVisible),
+            limit(ADS_PER_PAGE)
+          )
+        : query(
+            adsRef,
+            orderBy("publishedAt", "desc"),
+            startAfter(lastVisible),
+            limit(ADS_PER_PAGE)
+          );
+
+      const adDocs = await getDocs(q);
+      const adsData = adDocs.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+      }));
+
+      setAds((prevAds) => [...prevAds, ...adsData]);
+      setLastVisible(adDocs.docs[adDocs.docs.length - 1] || null);
+      setHasMore(adDocs.docs.length === ADS_PER_PAGE);
+    } catch (error) {
+      console.error("Error loading more ads:", error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -61,32 +130,39 @@ const HomeScreen = () => {
   );
 
   return (
-<View style={styles.container}>
-  <Text style={styles.title}>Filter by Category</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Filter by Category</Text>
 
-  <View style={styles.categoryWrapper}>
-    <FlatList
-      data={categories}
-      horizontal
-      keyExtractor={(item) => item.value}
-      renderItem={renderCategory}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.categoryList}
-    />
-  </View>
+      <View style={styles.categoryWrapper}>
+        <FlatList
+          data={categories}
+          horizontal
+          keyExtractor={(item) => item.value}
+          renderItem={renderCategory}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryList}
+        />
+      </View>
 
-  <Text style={styles.title}>
-    {selectedCategory ? `${selectedCategory}` : "All Recent Posts"}
-  </Text>
+      <Text style={styles.title}>
+        {selectedCategory ? selectedCategory : "All Recent Posts"}
+      </Text>
 
-  <FlatList
-    data={ads}
-    keyExtractor={(item) => item.id}
-    renderItem={({ item }) => <AdCard ad={item} />}
-    contentContainerStyle={{ paddingBottom: 80 }}
-  />
-</View>
-
+      <FlatList
+        data={ads}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <AdCard ad={item} />}
+        contentContainerStyle={{ paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+        onEndReached={loadMoreAds}
+        onEndReachedThreshold={0.5}
+        refreshing={refreshing}
+        onRefresh={getAds}
+        ListFooterComponent={
+          loadingMore ? <ActivityIndicator size="small" color="#800d0dff" /> : null
+        }
+      />
+    </View>
   );
 };
 
@@ -102,7 +178,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   categoryWrapper: {
-    height: 50, // fixes cutoff issue
+    height: 50,
     marginBottom: 10,
   },
   categoryList: {
@@ -119,7 +195,7 @@ const styles = StyleSheet.create({
     height: 40,
   },
   selectedCategory: {
-    backgroundColor: 'sienna',
+    backgroundColor: "sienna",
   },
   categoryLabel: {
     color: "#000",
@@ -127,6 +203,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
 
 export default HomeScreen;

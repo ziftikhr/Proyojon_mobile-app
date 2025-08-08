@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Image } from 'react-native';
 
 import Home from './screens/Home';
 import Profile from './screens/Profile';
@@ -17,7 +17,7 @@ import ChatMessagesScreen from './screens/ChatMessagesScreen';
 import ChatDetailsScreen from './screens/ChatDetailsScreen';
 import { useAtom } from 'jotai';
 import { userAtom } from '../atoms/userAtom';
-import HomeStack from './HomeStack';
+import logo from '../assets/proyojon.png'; // Adjust the path to your logo image
 import DetailedAdScreen from "./screens/DetailedAdScreen";
 
 const Tab = createBottomTabNavigator();
@@ -39,6 +39,14 @@ function HomeTabs({ navigation }) {
         tabBarActiveTintColor: '#800d0dff',
         tabBarInactiveTintColor: 'gray',
         // headerShown: false,
+        // Don't show header for HomeTabs, we want a custom header
+        headerShown: true,
+        headerTitle: () => (
+          <Image
+            source={logo} // Path to your logo
+            style={{ width: 100, height: 40, resizeMode: 'contain' }} // Customize size and style
+          />
+        ),
         headerRight: () => (
           <>
             <Pressable onPress={() => navigation.navigate('Profile', {user: user?.email})} style={{ padding: 10 }}>
@@ -75,7 +83,7 @@ export default function Tabs() {
         <Stack.Screen
           name="AdDetails"
           component={DetailedAdScreen}
-          options={{ title: "Ad Details" }}
+          options={{ title: null }}
         />
 
       <Stack.Screen
