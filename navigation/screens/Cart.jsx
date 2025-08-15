@@ -3,6 +3,7 @@ import {
   StyleSheet, View, Text, FlatList,
   Image, ActivityIndicator, TouchableOpacity
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { db } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, documentId } from 'firebase/firestore';
 import { userAtom } from '../../atoms/userAtom';
@@ -10,6 +11,7 @@ import { useAtom } from 'jotai';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Cart() {
+  const navigation = useNavigation();
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,7 +83,10 @@ export default function Cart() {
   }, [user, activeTab]);
 
   const renderAdItem = ({ item }) => (
-    <View style={styles.adCard}>
+    <TouchableOpacity 
+      style={styles.adCard}
+      onPress={() => navigation.navigate('AdDetails', { adId: item.id })}
+    >
       {item.images && item.images.length > 0 ? (
         <Image source={{ uri: item.images[0].url }} style={styles.adImage} />
       ) : (
@@ -101,7 +106,7 @@ export default function Cart() {
           </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderTabs = () => (
