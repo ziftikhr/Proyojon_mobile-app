@@ -20,9 +20,13 @@ const Login = ({ navigation }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       // Navigate to main app screen or home after successful login
-
       setUser(await getUserProfile(userCredential.user.uid));
-      navigation.goBack();
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.replace("Home"); // fallback
+      }
+
     } catch (err) {
       setError(err.message);
     }

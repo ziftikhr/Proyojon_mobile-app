@@ -5,7 +5,7 @@ import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import ReactNativeAsyncStorage  from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-
+import { getStorage } from "firebase/storage";
 const {
   firebaseApiKey,
   firebaseAuthDomain,
@@ -32,7 +32,7 @@ const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });
 const db = getFirestore(app);
-
+const storage = getStorage(app); //image storage
 let analytics;
 isSupported().then((supported) => {
   if (supported) {
@@ -40,4 +40,5 @@ isSupported().then((supported) => {
   }
 });
 
-export { app, auth, db };
+
+export { app, auth, db, storage};
