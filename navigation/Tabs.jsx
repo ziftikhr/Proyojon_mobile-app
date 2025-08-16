@@ -18,8 +18,9 @@ import ChatDetailsScreen from './screens/ChatDetailsScreen';
 import PostAd from './screens/PostAd';
 import { useAtom } from 'jotai';
 import { userAtom } from '../atoms/userAtom';
-import logo from '../assets/proyojon.png'; // Adjust the path to your logo image
+import logo from '../assets/proyojon.png';
 import DetailedAdScreen from "./screens/DetailedAdScreen";
+import ChatIconWithBadge from './components/ChatIconWithBadge'; // Import the new component
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -46,9 +47,10 @@ function HomeTabs({ navigation }) {
               <Pressable onPress={() => navigation.navigate('Profile', {user: user?.email})} style={{ padding: 10 }}>
                 <Ionicons name="person" size={24} color="#800d0dff" />
               </Pressable>
-              <Pressable onPress={() => navigation.navigate('ChatUsers')} style={{ padding: 10 }}>
-                <Ionicons name="chatbubbles" size={24} color="#800d0dff" />
-              </Pressable>
+              {/* Replace the old chat icon with the new one with badge */}
+              <ChatIconWithBadge 
+                onPress={() => navigation.navigate('ChatUsers')} 
+              />
             </>
           ),
         })}
@@ -68,14 +70,6 @@ function HomeTabs({ navigation }) {
         <Tab.Screen name="Updates" component={Updates} />
         <Tab.Screen name="Cart" component={Cart} />
       </Tab.Navigator>
-      
-      {/* Floating Action Button for Post Ad */}
-      {/* <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('PostAd')}
-      >
-        <Ionicons name="add" size={30} color="white" />
-      </TouchableOpacity> */}
     </>
   );
 }
@@ -100,7 +94,7 @@ const styles = StyleSheet.create({
 });
 
 export default function Tabs() {
-  const [user] = useAtom(userAtom); // Assuming userAtom is defined in atoms/userAtom.js
+  const [user] = useAtom(userAtom);
   return (
     <Stack.Navigator initialRouteName="HomeTabs">
       <Stack.Screen
@@ -133,7 +127,6 @@ export default function Tabs() {
           presentation: 'modal',
           headerRight: () => (
             <Pressable onPress={() => navigation.goBack()} style={{ padding: 10 }}>
-              {/* <Text style={{ color: 'blue' }}>Close</Text> */}
               <Ionicons name="close" size={24} color="black" />
             </Pressable>
           ),
@@ -143,9 +136,6 @@ export default function Tabs() {
       <Stack.Screen
         name="Profile"
         component={Profile}
-        // options={({ route }) => ({
-        //     title: route.params?.user ? `@${route.params.user}` : 'Profile',
-        // })}
         options={{ title: user? `@${user?.name}` : 'Profile' }}
       />
 
