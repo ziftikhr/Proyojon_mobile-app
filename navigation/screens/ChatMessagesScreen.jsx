@@ -14,7 +14,8 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { db } from '../../FirebaseConfig';
 import {
-  collection, query, orderBy, onSnapshot, addDoc, updateDoc, getDoc, doc
+  collection, query, orderBy, onSnapshot, addDoc, updateDoc, getDoc, doc,
+  setDoc
 } from 'firebase/firestore';
 import Message from '../components/Message';
 import MessageForm from '../components/MessageForm';
@@ -102,11 +103,12 @@ const ChatMessagesScreen = () => {
 
     try {
       await addDoc(collection(db, 'messages', chatId, 'chat'), msg);
-      await updateDoc(doc(db, 'messages', chatId), {
+      await setDoc(doc(db, 'messages', chatId), {
         lastText: text,
         lastSender: user1,
         lastUnread: true,
-      });
+        lastUpdated: new Date(),
+      }, { merge: true });
     } catch (err) {
       console.error('Failed to send message:', err);
     }

@@ -9,17 +9,22 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
+import Ionicons from "@expo/vector-icons";
 import moment from "moment";
+import { useAtom } from "jotai";
+import { userAtom } from "../../atoms/userAtom";
 
-const DetailedAdScreen = () => {
+const DetailedAdScreen = ({ navigation }) => {
   const route = useRoute();
   const { adId } = route.params;
 
   const [ad, setAd] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showNumber, setShowNumber] = useState(false);
+  const [user] = useAtom(userAtom);
+  const [publisher, setPublisher] = useState({});
 
   useEffect(() => {
     const fetchAd = async () => {
@@ -27,6 +32,10 @@ const DetailedAdScreen = () => {
         const docSnap = await getDoc(doc(db, "ads", adId));
         if (docSnap.exists()) {
           setAd(docSnap.data());
+          const docSnapP = await getDoc(doc(db, "users", docSnap.data().postedBy));
+          if (docSnapP.exists()) {
+            setPublisher(docSnapP.data());
+          }
         }
       } catch (err) {
         console.error("Error loading ad:", err);
@@ -54,6 +63,26 @@ const DetailedAdScreen = () => {
     );
   }
 
+  const createChatroom = async () => {
+    const loggedInUser = user?.uid;
+    const chatId =
+      loggedInUser > ad.postedBy
+        ? `${loggedInUser}.${ad.postedBy}.${adId}`
+        : `${ad.postedBy}.${loggedInUser}.${adId}`;
+        try {
+          await setDoc(doc(db, "messages", chatId), {
+            ad: adId,
+            users: [loggedInUser, ad.postedBy],
+            lastUpdated: new Date(),
+          });
+        } catch (error) {
+          console.error("Error creating chatroom:", error);
+        }
+
+    navigation.navigate("ChatMessages", { chatUser: { ad: ad, other: publisher } });
+  };
+  
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <ScrollView horizontal pagingEnabled>
@@ -77,7 +106,15 @@ const DetailedAdScreen = () => {
 
       <Text style={styles.sectionTitle}>Contact</Text>
       {showNumber ? (
-        <Text style={styles.contactText}>📞 {ad.contactnum}</Text>
+        <>
+          {user ? (
+            <Text style={styles.contactText}>
+              <Ionicons name="call" size={16} /> {ad.contactnum}
+            </Text>
+          ) : (
+            <Text style={styles.contactText}>Login to see contact info</Text>
+          )}
+        </>
       ) : (
         <TouchableOpacity
           style={styles.button}
@@ -87,12 +124,18 @@ const DetailedAdScreen = () => {
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: "#ccc" }]}
-        disabled
+      {user && (<TouchableOpacity
+        style={[styles.button, { backgroundColor: "maroon" }]}
+        onPress={() => {
+          if (user.uid === ad.postedBy) {
+            alert("You cannot chat with yourself.");
+          } else {
+            createChatroom();
+          }
+        }}
       >
         <Text style={styles.buttonText}>Chat with Donor</Text>
-      </TouchableOpacity>
+      </TouchableOpacity>)}
     </ScrollView>
   );
 };

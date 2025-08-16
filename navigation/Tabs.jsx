@@ -55,7 +55,7 @@ function HomeTabs({ navigation }) {
       >
         <Tab.Screen name="Home" component={Home} />
         <Tab.Screen
-          name="PostAd"
+          name="Post"
           component={PostAd}
           options={{
             tabBarLabel: 'Post',
@@ -153,12 +153,6 @@ export default function Tabs() {
         name="NotFound"
         component={NotFound}
         options={{ title: '404' }}
-      />
-
-      <Stack.Screen
-        name="PostAd"
-        component={PostAd}
-        options={{ title: 'Post Ad' }}
       />
 
       <Stack.Screen name="ChatUsers" component={ChatUsersScreen} options={{ title: 'Chats' }} />

@@ -14,6 +14,7 @@ import {
   doc,
   getDoc,
   onSnapshot,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
 import User from '../components/User';
@@ -28,57 +29,57 @@ const ChatUsersScreen = ({ navigation }) => {
   const user1 = user?.uid;
 
   useEffect(() => {
-    const getList = async () => {
-      if (!user1) {
-        setLoading(false);
-        return;
+  if (!user1) {
+    setLoading(false);
+    return;
+  }
+
+  setLoading(true);
+
+  const msgRef = collection(db, "messages");
+  const q = query(
+    msgRef,
+    where("users", "array-contains", user1),
+    orderBy("lastUpdated", "desc")
+  );
+
+  const unsub = onSnapshot(q, async (msgsSnap) => {
+    const userList = [];
+
+    for (const docSnap of msgsSnap.docs) {
+      const message = docSnap.data();
+
+      const adRef = doc(db, "ads", message.ad);
+      const otherRef = doc(db, "users", message.users.find((id) => id !== user1));
+
+      const [adDoc, otherDoc] = await Promise.all([
+        getDoc(adRef),
+        getDoc(otherRef),
+      ]);
+
+      if (adDoc.exists() && otherDoc.exists()) {
+        userList.push({
+          ad: adDoc.data(),
+          me: user, // from jotai atom
+          other: otherDoc.data(),
+        });
+
+        // keep tracking online status
+        onSnapshot(otherRef, (doc) => {
+          setOnline((prev) => ({
+            ...prev,
+            [doc.data().uid]: doc.data().isOnline,
+          }));
+        });
       }
+    }
 
-      setLoading(true);
-      try {
-        const msgRef = collection(db, 'messages');
-        const q = query(msgRef, where('users', 'array-contains', user1));
-        const msgsSnap = await getDocs(q);
-        const messages = msgsSnap.docs.map((doc) => doc.data());
-        const userList = [];
+    setUsers(userList); // no reverse needed
+    setLoading(false);
+  });
 
-        for (const message of messages) {
-          const adRef = doc(db, 'ads', message.ad);
-          const meRef = doc(db, 'users', message.users.find((id) => id === user1));
-          const otherRef = doc(db, 'users', message.users.find((id) => id !== user1));
-
-          const [adDoc, meDoc, otherDoc] = await Promise.all([
-            getDoc(adRef),
-            getDoc(meRef),
-            getDoc(otherRef),
-          ]);
-
-          if (adDoc.exists() && meDoc.exists() && otherDoc.exists()) {
-            userList.push({
-              ad: adDoc.data(),
-              me: meDoc.data(),
-              other: otherDoc.data(),
-            });
-
-            onSnapshot(otherRef, (doc) => {
-              setOnline((prev) => ({
-                ...prev,
-                [doc.data().uid]: doc.data().isOnline,
-              }));
-            });
-          }
-        }
-
-        setUsers(userList);
-      } catch (err) {
-        console.error('Error fetching chat users:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getList();
-  }, [user1]);
+  return () => unsub();
+}, [user1]);
 
   if (loading) {
     return (
