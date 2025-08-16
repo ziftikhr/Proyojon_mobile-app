@@ -11,14 +11,17 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
+import { Button } from '@react-navigation/elements';
 import * as ImagePicker from 'expo-image-picker';
-import { storage, db, auth } from '../../FirebaseConfig';
+import { storage, db } from '../../FirebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { addDoc, collection, Timestamp, setDoc, doc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
-import { onAuthStateChanged } from 'firebase/auth';
 import { KeyboardAvoidingView, Platform } from 'react-native';
+import { useAtom } from 'jotai';
+import { userAtom } from '../../atoms/userAtom';
 
 const categories = [
   'Stationaries',
@@ -34,7 +37,6 @@ const categories = [
 const PostAd = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true); // New loading state for auth
   const [images, setImages] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
@@ -45,31 +47,7 @@ const PostAd = () => {
     location: '',
   });
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-
-  // Auth state listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setAuthLoading(false);
-      
-      // If user is not logged in, redirect to login
-      if (!user) {
-        Alert.alert(
-          'Authentication Required', 
-          'You must be logged in to post an ad. Please log in first.',
-          [
-            {
-              text: 'Go to Login',
-              onPress: () => navigation.navigate('Login') // Adjust route name as needed
-            }
-          ]
-        );
-      }
-    });
-    
-    return () => unsubscribe();
-  }, [navigation]);
+  const [user] = useAtom(userAtom);
 
   // Image picker permissions
   useEffect(() => {
@@ -83,35 +61,12 @@ const PostAd = () => {
       }
     };
     
-    if (currentUser) {
+    if (user) {
       requestPermissions();
     }
-  }, [currentUser]);
-
-  // Prevent actions if not authenticated
-  const requireAuth = (action) => {
-    if (!currentUser) {
-      Alert.alert(
-        'Login Required',
-        'You must be logged in to perform this action.',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          },
-          {
-            text: 'Login',
-            onPress: () => navigation.navigate('Login') // Adjust route name as needed
-          }
-        ]
-      );
-      return false;
-    }
-    return true;
-  };
+  }, [user]);
 
   const pickImages = async () => {
-    if (!requireAuth()) return;
 
     if (images.length >= 5) {
       Alert.alert('Limit reached', 'You can only add up to 5 images');
@@ -157,7 +112,6 @@ const PostAd = () => {
   };
 
   const removeImage = (imageId) => {
-    if (!requireAuth()) return;
     setImages(prevImages => prevImages.filter(image => image.id !== imageId));
   };
 
@@ -205,7 +159,7 @@ const PostAd = () => {
           customMetadata: {
             uploadedAt: new Date().toISOString(),
             originalName: originalName,
-            uploadedBy: currentUser.uid
+            uploadedBy: user.uid
           }
         };
 
@@ -232,21 +186,6 @@ const PostAd = () => {
   };
 
   const handleSubmit = async () => {
-    // Double-check authentication before submitting
-    if (!currentUser) {
-      Alert.alert(
-        'Authentication Required', 
-        'You must be logged in to post an ad.',
-        [
-          {
-            text: 'Login',
-            onPress: () => navigation.navigate('Login')
-          }
-        ]
-      );
-      return;
-    }
-    
     if (!formData.title || !formData.category || !formData.Price || !formData.contactnum) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
@@ -270,8 +209,8 @@ const PostAd = () => {
         description: formData.description,
         isDonated: formData.Price.toLowerCase() === 'free' || formData.Price === '0',
         publishedAt: Timestamp.fromDate(new Date()),
-        postedBy: currentUser.uid,
-        userEmail: currentUser.email || null, // Add user email for reference
+        postedBy: user.uid,
+        userEmail: user.email || null, // Add user email for reference
       };
       
       const result = await addDoc(collection(db, 'ads'), adData);
@@ -306,50 +245,17 @@ const PostAd = () => {
     }
   };
 
-  // Show loading screen while checking authentication
-  if (authLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#800d0dff" />
-        <Text style={styles.loadingText}>Checking authentication...</Text>
-      </View>
-    );
-  }
-
-  // Show login prompt if not authenticated
-  if (!currentUser) {
-    return (
-      <View style={styles.authContainer}>
-        <Text style={styles.authTitle}>Login Required</Text>
-        <Text style={styles.authMessage}>
-          You must be logged in to post an ad. Please log in to continue.
-        </Text>
-        <TouchableOpacity 
-          style={styles.loginButton}
-          onPress={() => navigation.navigate('Login')} // Adjust route name as needed
-        >
-          <Text style={styles.loginButtonText}>Go to Login</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-    >
+    <SafeAreaView style={{ flex: 1 }}>
+      {user? (<KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Post New Ad</Text>
-          <Text style={styles.userInfo}>Logged in as: {currentUser.email}</Text>
+          <Text style={styles.userInfo}>Logged in as: {user.email}</Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -390,9 +296,7 @@ const PostAd = () => {
             <TouchableOpacity
               style={styles.input}
               onPress={() => {
-                if (requireAuth()) {
                   setShowCategoryModal(true);
-                }
               }}
             >
               <Text style={{ color: formData.category ? '#000' : '#888' }}>
@@ -470,14 +374,20 @@ const PostAd = () => {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#800d0dff" />
             ) : (
               <Text style={styles.submitButtonText}>Create</Text>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingView>) : (
+      <View style={styles.unLogged}>
+        <Text style={{padding: 20, textAlign: 'center', fontSize: 18}}>Please login to view your profile.</Text>
+        <Button title="Login" onPress={() => {navigation.navigate('Login')}} >Login</Button>
+      </View>
+    )}
+    </SafeAreaView>
   );
 };
 
@@ -496,6 +406,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#666',
+  },
+  unLogged: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   authContainer: {
     flex: 1,
