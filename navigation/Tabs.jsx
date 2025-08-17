@@ -22,6 +22,7 @@ import logo from '../assets/proyojon.png';
 import DetailedAdScreen from "./screens/DetailedAdScreen";
 import ChatIconWithBadge from './components/ChatIconWithBadge';
 import UpdatesIconWithBadge from './components/UpdateIconWithBadge'; // Import the new component
+import AuctionScreen from './screens/AuctionScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -46,6 +47,9 @@ function HomeTabs({ navigation }) {
               return <UpdatesIconWithBadge color={color} size={size} />;
             } else if (route.name === 'PostAdButton') {
               iconName = 'add-circle';
+              return <Ionicons name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Auction') {
+              iconName = 'hammer';
               return <Ionicons name={iconName} size={size} color={color} />;
             }
             return <Ionicons name="home" size={size} color={color} />;
@@ -72,6 +76,7 @@ function HomeTabs({ navigation }) {
         })}
       >
         <Tab.Screen name="Home" component={Home} />
+        <Tab.Screen name="Auction" component={AuctionScreen} />
         <Tab.Screen
           name="Post"
           component={PostAd}
@@ -82,7 +87,6 @@ function HomeTabs({ navigation }) {
             ),
           }}
         />
-
         <Tab.Screen name="Updates" component={Updates} />
         <Tab.Screen name="Cart" component={Cart} />
       </Tab.Navigator>

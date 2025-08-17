@@ -19,9 +19,9 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
-import AdCard from "../components/AdCard";
+import AdCardAuction from "../components/AdCard_auction";
 
-const HomeScreen = () => {
+const AuctionScreen = () => {
   const [ads, setAds] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,129 +78,129 @@ const HomeScreen = () => {
   // Fetch first batch
   const getAds = async () => {
     try {
-      setRefreshing(true);
-      const adsRef = collection(db, "ads");
+        setRefreshing(true);
+        const adsRef = collection(db, "ads");
 
-      const q = selectedCategory
+        const q = selectedCategory
         ? query(
             adsRef,
-            where("isAuction", "==", false),   // Only Regular Ads
+            where("isAuction", "==", true),   // Only Auction Ads
             where("category", "==", selectedCategory),
             orderBy("publishedAt", "desc"),
             limit(ADS_PER_PAGE)
-          )
+            )
         : query(
             adsRef,
-            where("isAuction", "==", false),   // Only Regular Ads
+            where("isAuction", "==", true),   // Only Auction Ads
             orderBy("publishedAt", "desc"),
             limit(ADS_PER_PAGE)
-          );
+            );
 
-      const adDocs = await getDocs(q);
-      let adsData = adDocs.docs.map((doc) => ({
+        const adDocs = await getDocs(q);
+        let adsData = adDocs.docs.map((doc) => ({
         ...doc.data(),
         id: doc.id,
-      }));
+        }));
 
-      // Search filter
-      if (searchQuery.trim() !== "") {
+        //  Search filter
+        if (searchQuery.trim() !== "") {
         adsData = adsData.filter(
-          (ad) =>
+            (ad) =>
             ad.title &&
             ad.title.toLowerCase().includes(searchQuery.toLowerCase())
         );
-      }
+        }
 
-      // Price sorting
-      if (priceSort === "free") {
+        // Price sorting
+        if (priceSort === "free") {
         adsData = adsData.filter(
-          (ad) =>
+            (ad) =>
             !getPriceFromAd(ad) ||
             String(getPriceFromAd(ad)).toLowerCase().trim() === "free" ||
             priceToNumber(ad) === 0
         );
-      } else if (priceSort === "lowtohigh") {
+        } else if (priceSort === "lowtohigh") {
         adsData.sort((a, b) => priceToNumber(a) - priceToNumber(b));
-      } else if (priceSort === "hightolow") {
+        } else if (priceSort === "hightolow") {
         adsData.sort((a, b) => priceToNumber(b) - priceToNumber(a));
-      }
+        }
 
-      setAds(adsData);
-      setLastVisible(adDocs.docs[adDocs.docs.length - 1] || null);
-      setHasMore(adDocs.docs.length === ADS_PER_PAGE);
+        setAds(adsData);
+        setLastVisible(adDocs.docs[adDocs.docs.length - 1] || null);
+        setHasMore(adDocs.docs.length === ADS_PER_PAGE);
     } catch (error) {
-      console.error("Error fetching ads:", error);
+        console.error("Error fetching ads:", error);
     } finally {
-      setRefreshing(false);
+        setRefreshing(false);
     }
-  };
+    };
 
 
   // Pagination load
   const loadMoreAds = async () => {
     if (!hasMore || loadingMore || !lastVisible) return;
     try {
-      setLoadingMore(true);
-      const adsRef = collection(db, "ads");
+        setLoadingMore(true);
+        const adsRef = collection(db, "ads");
 
-      const q = selectedCategory
+        const q = selectedCategory
         ? query(
             adsRef,
-            where("isAuction", "==", false),   // Only Regular Ads
+            where("isAuction", "==", true),   // Only Auction Ads
             where("category", "==", selectedCategory),
             orderBy("publishedAt", "desc"),
             startAfter(lastVisible),
             limit(ADS_PER_PAGE)
-          )
+            )
         : query(
             adsRef,
-            where("isAuction", "==", false),   // Only Regular Ads
+            where("isAuction", "==", true),   // Only Auction Ads
             orderBy("publishedAt", "desc"),
             startAfter(lastVisible),
             limit(ADS_PER_PAGE)
-          );
+            );
 
-      const adDocs = await getDocs(q);
-      let adsData = adDocs.docs.map((doc) => ({
+        const adDocs = await getDocs(q);
+        let adsData = adDocs.docs.map((doc) => ({
         ...doc.data(),
         id: doc.id,
-      }));
+        }));
 
-      // Search filter
-      if (searchQuery.trim() !== "") {
+        // Search filter
+        if (searchQuery.trim() !== "") {
         adsData = adsData.filter(
-          (ad) =>
+            (ad) =>
             ad.title &&
             ad.title.toLowerCase().includes(searchQuery.toLowerCase())
         );
-      }
+        }
 
-      const allAds = [...ads, ...adsData];
+        const allAds = [...ads, ...adsData];
 
-      // Price sorting
-      let finalAds = allAds;
-      if (priceSort === "free") {
+        // Price sorting
+        let finalAds = allAds;
+        if (priceSort === "free") {
         finalAds = allAds.filter(
-          (ad) =>
+            (ad) =>
             !getPriceFromAd(ad) ||
             String(getPriceFromAd(ad)).toLowerCase().trim() === "free" ||
             priceToNumber(ad) === 0
         );
-      } else if (priceSort === "lowtohigh") {
+        } else if (priceSort === "lowtohigh") {
         finalAds = allAds.sort((a, b) => priceToNumber(a) - priceToNumber(b));
-      } else if (priceSort === "hightolow") {
+        } else if (priceSort === "hightolow") {
         finalAds = allAds.sort((a, b) => priceToNumber(b) - priceToNumber(a));
-      }
+        }
 
-      setAds(finalAds);
-      setLastVisible(adDocs.docs[adDocs.docs.length - 1] || null);
-      setHasMore(adDocs.docs.length === ADS_PER_PAGE);
+        setAds(finalAds);
+        setLastVisible(adDocs.docs[adDocs.docs.length - 1] || null);
+        setHasMore(adDocs.docs.length === ADS_PER_PAGE);
     } catch (error) {
-      console.error("Error loading more ads:", error);
+        console.error("Error loading more ads:", error);
     } finally {
-      setLoadingMore(false);
+        setLoadingMore(false);
     }
-  };
+    };
 
 
   useEffect(() => {
@@ -311,7 +311,7 @@ const HomeScreen = () => {
       <FlatList
         data={ads}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <AdCard ad={item} />}
+        renderItem={({ item }) => <AdCardAuction ad={item} />}
         contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
         onEndReached={loadMoreAds}
@@ -442,4 +442,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default AuctionScreen;

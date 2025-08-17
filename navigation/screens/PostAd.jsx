@@ -240,7 +240,7 @@ const PostAd = () => {
         postedBy: user.uid,
         userEmail: user.email || null,
         isAuction: isAuction,
-        bidCount: isAuction ? 0 : undefined,
+        bidCount: isAuction ? 0 : null,
         ...(isAuction
           ? {
               // Nested auction object structure
