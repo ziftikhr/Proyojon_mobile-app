@@ -352,6 +352,17 @@ const DetailedAdScreen = ({ navigation }) => {
     return Math.max(currentBid, startingPrice) + bidIncrement;
   };
 
+  const navigateToSellerProfile = () => {
+    if (publisher) {
+      // Temporarily show owner info in an alert instead of navigation
+      Alert.alert(
+        "Owner's Information", 
+        `Name: ${publisher.name || 'Anonymous'}\nMember since: ${publisher.createdAt ? moment(publisher.createdAt.toDate()).format('MMM YYYY') : 'Unknown'}`,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -439,6 +450,34 @@ const DetailedAdScreen = ({ navigation }) => {
 
       <Text style={styles.sectionTitle}>Description</Text>
       <Text style={styles.description}>{ad.description || "No description available"}</Text>
+
+      {/* Seller Information Section */}
+      <Text style={styles.sectionTitle}>Owner's Information</Text>
+      <View style={styles.sellerCard}>
+        <TouchableOpacity 
+          style={styles.sellerInfo} 
+          onPress={navigateToSellerProfile}
+          activeOpacity={0.7}
+        >
+          {publisher.photoUrl ? (
+            <Image
+              source={{ uri: publisher.photoUrl }}
+              style={styles.sellerAvatar}
+            />
+          ) : (
+            <View style={styles.defaultAvatar}>
+              <Ionicons name="person" size={24} color="#666" />
+            </View>
+          )}
+          <View style={styles.sellerDetails}>
+            <Text style={styles.sellerName}>{publisher.name || "Anonymous Seller"}</Text>
+            <Text style={styles.sellerJoined}>
+              Member since {publisher.createdAt ? moment(publisher.createdAt.toDate()).format('MMM YYYY') : 'Unknown'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
 
       <Text style={styles.sectionTitle}>Contact</Text>
       {showNumber ? (
@@ -665,12 +704,55 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontSize: 16,
     fontWeight: "bold",
+    marginBottom: 8,
   },
   description: {
     fontSize: 14,
     color: "#333",
     marginTop: 5,
     lineHeight: 20,
+    marginBottom: 10,
+  },
+  // Seller Information Styles
+  sellerCard: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  sellerInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+  },
+  sellerAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  defaultAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  sellerDetails: {
+    flex: 1,
+  },
+  sellerName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 2,
+  },
+  sellerJoined: {
+    fontSize: 12,
+    color: "#666",
   },
   button: {
     backgroundColor: "sienna",
