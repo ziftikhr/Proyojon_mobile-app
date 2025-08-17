@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 
-const User = ({ user, selectUser, chat, online, user1, unreadCount, hasUnread }) => {
+const User = ({ user, selectUser, chat, online, user1, unreadCount, hasUnread, onLongPress }) => {
   const isSelected =
     chat?.other?.uid === user.other.uid && chat?.ad?.adId === user.ad.adId;
 
@@ -13,6 +13,8 @@ const User = ({ user, selectUser, chat, online, user1, unreadCount, hasUnread })
         hasUnread && styles.unreadContainer // Add unread highlighting
       ]}
       onPress={() => selectUser(user)}
+      onLongPress={onLongPress}
+      delayLongPress={400}
     >
       <View style={[
         styles.avatarWrapper, 

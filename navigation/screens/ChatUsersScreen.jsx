@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Text,
+  Alert,
+  Pressable, 
 } from 'react-native';
 import {
   collection,
@@ -15,6 +17,7 @@ import {
   getDoc,
   onSnapshot,
   orderBy,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
 import User from '../components/User';
@@ -53,13 +56,21 @@ const ChatUsersScreen = ({ navigation }) => {
         const messageId = docSnap.id;
 
         // Only mark as unread if last message was not sent by me
-        const hasUnread = message.lastUnread === true && message.lastSender !== user1;
+        const hasUnread =
+          message.lastUnread === true && message.lastSender !== user1;
         unreadStatus[messageId] = hasUnread;
 
         const adRef = doc(db, 'ads', message.ad);
-        const otherRef = doc(db, 'users', message.users.find((id) => id !== user1));
+        const otherRef = doc(
+          db,
+          'users',
+          message.users.find((id) => id !== user1)
+        );
 
-        const [adDoc, otherDoc] = await Promise.all([getDoc(adRef), getDoc(otherRef)]);
+        const [adDoc, otherDoc] = await Promise.all([
+          getDoc(adRef),
+          getDoc(otherRef),
+        ]);
 
         if (adDoc.exists() && otherDoc.exists()) {
           const userItem = {
@@ -98,8 +109,26 @@ const ChatUsersScreen = ({ navigation }) => {
     return () => unsub();
   }, [user1]);
 
-  const getUnreadCount = (messageId) => {
-    return unreadMessages[messageId] ? 1 : 0;
+  const handleDeleteChat = (chatId) => {
+    Alert.alert(
+      'Delete Chat',
+      'Are you sure you want to delete this chat?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'messages', chatId));
+            } catch (err) {
+              console.error('Error deleting chat:', err);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   if (loading) {
@@ -132,24 +161,17 @@ const ChatUsersScreen = ({ navigation }) => {
         data={users}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View
-            style={[
-              styles.userItemContainer,
-              item.hasUnread && styles.unreadContainer,
-            ]}
-          >
-            <User
-              user={item}
-              online={online}
-              user1={user1}
-              chat={null}
-              selectUser={() =>
-                navigation.navigate('ChatMessages', { chatUser: item })
-              }
-              // unreadCount={getUnreadCount(item.id)}
-              hasUnread={item.hasUnread}
-            />
-          </View>
+          <User
+            user={item}
+            online={online}
+            user1={user1}
+            chat={null}
+            hasUnread={item.hasUnread}
+            selectUser={() =>
+              navigation.navigate('ChatMessages', { chatUser: item })
+            }
+            onLongPress={() => handleDeleteChat(item.id)}
+          />
         )}
       />
     </View>
