@@ -37,15 +37,8 @@ const AdCard = ({ ad }) => {
   // Helper function to format price for display
   const formatPrice = (ad) => {
     if (ad.isAuction && ad.auction) {
-      const currentBid = ad.auction.currentBid || 0;
-      const startingPrice = ad.auction.startingPrice || 0;
-      const displayPrice = currentBid > 0 ? currentBid : startingPrice;
-      
-      if (currentBid > 0) {
-        return `৳${displayPrice.toLocaleString()} (Current Bid)`;
-      } else {
-        return `৳${displayPrice.toLocaleString()} (Starting)`;
-      }
+      const currentBid = ad.auction.currentBid || ad.auction.startingPrice || 0;
+      return `৳${currentBid.toLocaleString()} (Auction)`;
     }
     
     const priceValue = getPriceFromAd(ad);
@@ -64,25 +57,6 @@ const AdCard = ({ ad }) => {
     return String(priceValue);
   };
 
-  // Helper function to get auction time remaining
-  const getTimeRemaining = (ad) => {
-    if (!ad.isAuction || !ad.auction?.endTime) return null;
-    
-    const endTime = new Date(ad.auction.endTime);
-    const now = new Date();
-    const timeLeft = endTime - now;
-    
-    if (timeLeft <= 0) return "Ended";
-    
-    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
-  };
-
   useEffect(() => {
     if (!ad?.id) {
       console.error('AdCard - No ad.id provided');
@@ -92,16 +66,21 @@ const AdCard = ({ ad }) => {
     const docRef = doc(db, "favorites", ad.id);
 
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      console.log('AdCard - Firestore snapshot received:', snapshot.exists());
+      
       if (snapshot.exists()) {
         const data = snapshot.data();
         const favUsers = data.users || [];
+        console.log('AdCard - Favorite users from Firestore:', favUsers);
         
         setUsers(favUsers);
         
         // Check if current user is in the favorites list
         const isCurrentUserLiked = user?.uid ? favUsers.includes(user.uid) : false;
+        console.log('AdCard - Is current user liked?', isCurrentUserLiked);
         setLiked(isCurrentUserLiked);
       } else {
+        console.log('AdCard - No favorites document exists for this ad');
         setUsers([]);
         setLiked(false);
       }
@@ -110,7 +89,7 @@ const AdCard = ({ ad }) => {
     });
 
     return () => unsubscribe();
-  }, [ad.id, user?.uid]);
+  }, [ad.id, user?.uid]); // Added user?.uid to dependencies
 
   const toggleLike = async () => {
     if (!user?.uid) {
@@ -119,6 +98,7 @@ const AdCard = ({ ad }) => {
     }
 
     if (isLoading) {
+      console.log('AdCard - Toggle already in progress');
       return;
     }
 
@@ -126,67 +106,57 @@ const AdCard = ({ ad }) => {
     const docRef = doc(db, "favorites", ad.id);
     const uid = user.uid;
 
+    console.log('AdCard - Toggling like. Current liked state:', liked);
+
     try {
       if (liked) {
+        console.log('AdCard - Removing user from favorites');
         await updateDoc(docRef, {
           users: arrayRemove(uid),
         });
       } else {
+        console.log('AdCard - Adding user to favorites');
         await setDoc(docRef, {
           users: arrayUnion(uid),
-          adId: ad.id,
+          adId: ad.id, // Store ad ID for reference
           createdAt: new Date().toISOString(),
         }, { merge: true });
       }
+      console.log('AdCard - Toggle operation completed successfully');
     } catch (error) {
       console.error("AdCard - Error toggling like:", error);
+      // Optionally show an error message to user
+      // Alert.alert('Error', 'Failed to update favorite status');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCardPress = () => {
-    if (ad.isAuction) {
-      // Navigate to auction details or place bid screen
-      navigation.navigate("PlaceBid", { adId: ad.id });
-    } else {
-      navigation.navigate("AdDetails", { adId: ad.id });
-    }
-  };
-
-  const timeRemaining = getTimeRemaining(ad);
+  // Early return if no user is logged in
+  if (!user?.uid) {
+    console.log('AdCard - No user logged in, hiding favorite button');
+  }
 
   return (
     <TouchableOpacity
-      onPress={handleCardPress}
+      onPress={() => navigation.navigate("AdDetails", { adId: ad.id })}
       style={styles.card}
       activeOpacity={0.9}
     >
       <Image source={{ uri: imageUrl }} style={styles.image} />
       <View style={styles.contentContainer}>
         <Text style={styles.title}>{ad.title}</Text>
-        
         {ad.isAuction && (
           <View style={styles.auctionBadge}>
             <Text style={styles.auctionText}>AUCTION</Text>
           </View>
         )}
-        
         <Text style={styles.price}>{formatPrice(ad)}</Text>
-        
-        {ad.isAuction && timeRemaining && (
-          <View style={styles.auctionMetaContainer}>
-            <Ionicons name="time" size={14} color="#666" />
-            <Text style={styles.auctionMeta}>
-              {timeRemaining === "Ended" ? "Auction Ended" : `Ends in ${timeRemaining}`}
-            </Text>
-          </View>
+        {ad.isAuction && ad.auctionEndTime && (
+          <Text style={styles.auctionMeta}>
+            Ends: {new Date(ad.auctionEndTime).toLocaleString()}
+          </Text>
         )}
-        
-        {ad.isAuction && ad.bidCount && (
-          <Text style={styles.bidCount}>{ad.bidCount} bids</Text>
-        )}
-        
         <Text style={styles.meta}>
           {ad.category} · {ad.location || "Unknown"}
         </Text>
@@ -204,7 +174,7 @@ const AdCard = ({ ad }) => {
           <Ionicons
             name={liked ? "heart" : "heart-outline"}
             size={24}
-            color={liked ? "#ff4757" : "#747d8c"}
+            color={liked ? "#ff4757" : "#747d8c"} // Changed colors for better visibility
           />
           <Text style={[
             styles.likeCount,
@@ -295,21 +265,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
-  auctionMetaContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 2,
-  },
   auctionMeta: {
     fontSize: 12,
     color: "#666",
-    marginLeft: 4,
-  },
-  bidCount: {
-    fontSize: 12,
-    color: "#800d0d",
-    fontWeight: "600",
-    marginBottom: 2,
+    marginBottom: 4,
   },
 });
 

@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useAtom } from 'jotai';
 import { userAtom } from '../../atoms/userAtom';
+import { Picker } from '@react-native-picker/picker';
 
 const categories = [
   'Stationaries',
@@ -46,6 +47,12 @@ const PostAd = () => {
     description: '',
     location: '',
   });
+  const [isAuction, setIsAuction] = useState(false);
+  const [auctionData, setAuctionData] = useState({
+    startingPrice: '',
+    duration: '1',
+    bidIncrement: '0'
+  });
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [user] = useAtom(userAtom);
 
@@ -67,7 +74,6 @@ const PostAd = () => {
   }, [user]);
 
   const pickImages = async () => {
-
     if (images.length >= 5) {
       Alert.alert('Limit reached', 'You can only add up to 5 images');
       return;
@@ -166,7 +172,6 @@ const PostAd = () => {
         console.log(`Uploading to path: ${storagePath}`);
         const result = await uploadBytes(imgRef, blob, metadata);
         
-        // Fixed: Use result.ref instead of imgRef
         const fileUrl = await getDownloadURL(result.ref);
 
         imgs.push({
@@ -186,9 +191,29 @@ const PostAd = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.category || !formData.Price || !formData.contactnum) {
+    if (!formData.title || !formData.category || !formData.contactnum) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
+    }
+
+    if (isAuction) {
+      // Auction-specific validation
+      if (!auctionData.startingPrice || !auctionData.duration) {
+        Alert.alert('Error', 'Please fill auction fields: Starting Price & Duration');
+        return;
+      }
+      
+      const startingPriceNum = parseFloat(auctionData.startingPrice);
+      if (isNaN(startingPriceNum) || startingPriceNum <= 0) {
+        Alert.alert('Error', 'Please enter a valid starting price');
+        return;
+      }
+    } else {
+      // Regular ad validation
+      if (!formData.Price) {
+        Alert.alert('Error', 'Please provide a price or mark as Free');
+        return;
+      }
     }
 
     setLoading(true);
@@ -197,36 +222,60 @@ const PostAd = () => {
       if (images.length > 0) {
         imgs = await uploadImages();
       }
-      
+
+      // Calculate auction end time
+      const auctionEndTime = isAuction 
+        ? new Date(Date.now() + parseInt(auctionData.duration) * 24 * 60 * 60 * 1000)
+        : null;
+
       const adData = {
         images: imgs,
         title: formData.title,
         category: formData.category,
-        Price: formData.Price,
         contactnum: formData.contactnum,
         location: formData.location || 'Location not specified',
         coordinates: null,
         description: formData.description,
-        isDonated: formData.Price.toLowerCase() === 'free' || formData.Price === '0',
         publishedAt: Timestamp.fromDate(new Date()),
         postedBy: user.uid,
-        userEmail: user.email || null, // Add user email for reference
+        userEmail: user.email || null,
+        isAuction: isAuction,
+        bidCount: isAuction ? 0 : null,
+        ...(isAuction
+          ? {
+              // Nested auction object structure
+              auction: {
+                startingPrice: parseFloat(auctionData.startingPrice),
+                currentBid: 0,
+                currentBidderId: null,
+                endTime: auctionEndTime.toISOString(),
+                bidders: [],
+                status: 'active', // Set to active when created
+                bidIncrement: parseInt(auctionData.bidIncrement) || 1
+              }
+            }
+          : {
+              Price: formData.Price,
+              isDonated:
+                formData.Price.toLowerCase() === 'free' ||
+                formData.Price === '0',
+            }),
       };
-      
-      const result = await addDoc(collection(db, 'ads'), adData);
-      
-      await setDoc(doc(db, 'ads', result.id), {
-        adId: result.id,
-      }, { merge: true });
 
-      await setDoc(doc(db, 'favorites', result.id), {
-        users: []
-      });
-      
-      Alert.alert('Success', 'Your ad has been posted successfully!', [
+      const result = await addDoc(collection(db, 'ads'), adData);
+
+      await setDoc(
+        doc(db, 'ads', result.id),
+        { adId: result.id },
+        { merge: true }
+      );
+
+      await setDoc(doc(db, 'favorites', result.id), { users: [] });
+
+      Alert.alert('Success', `Your ${isAuction ? 'auction' : 'ad'} has been posted successfully!`, [
         { text: 'OK', onPress: () => navigation.navigate('Home') },
       ]);
-      
+
       // Reset form
       setFormData({
         title: '',
@@ -236,6 +285,12 @@ const PostAd = () => {
         description: '',
         location: '',
       });
+      setAuctionData({ 
+        startingPrice: '', 
+        duration: '1', 
+        bidIncrement: '1' 
+      });
+      setIsAuction(false);
       setImages([]);
     } catch (error) {
       console.error('Submit error:', error);
@@ -247,146 +302,210 @@ const PostAd = () => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {user? (<KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-      >
-      <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Post New Ad</Text>
-          <Text style={styles.userInfo}>Logged in as: {user.email}</Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          {/* Image Upload */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Photos ({images.length}/5)</Text>
-            <View style={styles.imageContainer}>
-              {images.map((image) => (
-                <View key={image.id} style={styles.imageWrapper}>
-                  <Image source={{ uri: image.uri }} style={styles.image} />
-                  <TouchableOpacity 
-                    style={styles.removeButton} 
-                    onPress={() => removeImage(image.id)}
-                  >
-                    <Text style={styles.removeButtonText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {images.length < 5 && (
-                <TouchableOpacity style={styles.imageButton} onPress={pickImages}>
-                  <Text style={styles.imageButtonText}>📷 Add from Gallery</Text>
-                </TouchableOpacity>
-              )}
+      {user ? (
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+        >
+          <ScrollView style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Post New Ad</Text>
+              <Text style={styles.userInfo}>Logged in as: {user.email}</Text>
             </View>
-          </View>
 
-          {/* Form Fields */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Details</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Title *"
-              value={formData.title}
-              onChangeText={(text) => setFormData({ ...formData, title: text })}
-            />
-
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => {
-                  setShowCategoryModal(true);
-              }}
-            >
-              <Text style={{ color: formData.category ? '#000' : '#888' }}>
-                {formData.category || 'Select Category *'}
-              </Text>
-            </TouchableOpacity>
-
-            <Modal
-              visible={showCategoryModal}
-              transparent
-              animationType="slide"
-              onRequestClose={() => setShowCategoryModal(false)}
-            >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContainer}>
-                  <Text style={styles.modalTitle}>Select Category</Text>
-                  <FlatList
-                    data={categories}
-                    keyExtractor={(item) => item}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.modalItem}
-                        onPress={() => {
-                          setFormData({ ...formData, category: item });
-                          setShowCategoryModal(false);
-                        }}
+            <View style={styles.formContainer}>
+              {/* Image Upload */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Photos ({images.length}/5)</Text>
+                <View style={styles.imageContainer}>
+                  {images.map((image) => (
+                    <View key={image.id} style={styles.imageWrapper}>
+                      <Image source={{ uri: image.uri }} style={styles.image} />
+                      <TouchableOpacity 
+                        style={styles.removeButton} 
+                        onPress={() => removeImage(image.id)}
                       >
-                        <Text style={styles.modalItemText}>{item}</Text>
+                        <Text style={styles.removeButtonText}>✕</Text>
                       </TouchableOpacity>
-                    )}
-                  />
-                  <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                    <Text style={styles.modalCancel}>Cancel</Text>
-                  </TouchableOpacity>
+                    </View>
+                  ))}
+                  {images.length < 5 && (
+                    <TouchableOpacity style={styles.imageButton} onPress={pickImages}>
+                      <Text style={styles.imageButtonText}>📷 Add from Gallery</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
-            </Modal>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Price * (Type Free to Donate)"
-              value={formData.Price}
-              onChangeText={(text) => setFormData({ ...formData, Price: text })}
-              keyboardType="numeric"
-            />
+              {/* Form Fields */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Details</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Contact Number *"
-              value={formData.contactnum}
-              onChangeText={(text) => setFormData({ ...formData, contactnum: text })}
-              keyboardType="phone-pad"
-            />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Title *"
+                  value={formData.title}
+                  onChangeText={(text) => setFormData({ ...formData, title: text })}
+                />
 
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Item Description & Specific Address *"
-              value={formData.description}
-              onChangeText={(text) => setFormData({ ...formData, description: text })}
-              multiline
-              numberOfLines={4}
-            />
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => setShowCategoryModal(true)}
+                >
+                  <Text style={{ color: formData.category ? '#000' : '#888' }}>
+                    {formData.category || 'Select Category *'}
+                  </Text>
+                </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Location"
-              value={formData.location}
-              onChangeText={(text) => setFormData({ ...formData, location: text })}
-            />
-          </View>
+                <Modal
+                  visible={showCategoryModal}
+                  transparent
+                  animationType="slide"
+                  onRequestClose={() => setShowCategoryModal(false)}
+                >
+                  <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                      <Text style={styles.modalTitle}>Select Category</Text>
+                      <FlatList
+                        data={categories}
+                        keyExtractor={(item) => item}
+                        renderItem={({ item }) => (
+                          <TouchableOpacity
+                            style={styles.modalItem}
+                            onPress={() => {
+                              setFormData({ ...formData, category: item });
+                              setShowCategoryModal(false);
+                            }}
+                          >
+                            <Text style={styles.modalItemText}>{item}</Text>
+                          </TouchableOpacity>
+                        )}
+                      />
+                      <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+                        <Text style={styles.modalCancel}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </Modal>
 
-          <TouchableOpacity
-            style={[styles.submitButton, loading && styles.disabledButton]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#800d0dff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Create</Text>
-            )}
-          </TouchableOpacity>
+                {/* Auction Toggle */}
+                <View style={styles.toggleContainer}>
+                  <Text style={styles.toggleLabel}>Ad Mode</Text>
+                  <TouchableOpacity
+                    style={[styles.toggleButton, isAuction ? styles.toggleAuction : styles.toggleRegular]}
+                    onPress={() => setIsAuction(!isAuction)}
+                  >
+                    <Text style={styles.toggleButtonText}>
+                      {isAuction ? 'Auction Mode' : 'Regular Mode'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {isAuction ? (
+                  <>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Starting Price * (৳)"
+                      value={auctionData.startingPrice}
+                      onChangeText={(text) => setAuctionData({ ...auctionData, startingPrice: text })}
+                      keyboardType="numeric"
+                    />
+                    
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Bid Increment"
+                      value={auctionData.bidIncrement}
+                      onChangeText={(text) => setAuctionData({ ...auctionData, bidIncrement: text })}
+                      keyboardType="numeric"
+                    />
+                    
+                    
+                      <View style={[styles.input, { paddingHorizontal: 10 }]}>
+                      <Picker
+                        selectedValue={auctionData.duration}
+                        onValueChange={(itemValue) =>
+                          setAuctionData({ ...auctionData, duration: itemValue.toString() })
+                        }
+                        mode="dropdown"
+                        style={{ color: '#000' }}
+                      >
+                        <Picker.Item label="Select Duration" value="" enabled={false} color="#888" />
+                        {[...Array(7)].map((_, i) => (
+                          <Picker.Item
+                            key={i + 1}
+                            label={`${i + 1} Day${i + 1 > 1 ? 's' : ''}`}
+                            value={(i + 1).toString()}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+
+
+
+                    <View style={styles.auctionInfo}>
+                      <Text style={styles.auctionInfoText}>
+                        🔨 Auction will end on: {new Date(Date.now() + parseInt(auctionData.duration) * 24 * 60 * 60 * 1000).toLocaleString()}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Price * (Type Free to Donate)"
+                    value={formData.Price}
+                    onChangeText={(text) => setFormData({ ...formData, Price: text })}
+                    keyboardType="numeric"
+                  />
+                )}
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Contact Number *"
+                  value={formData.contactnum}
+                  onChangeText={(text) => setFormData({ ...formData, contactnum: text })}
+                  keyboardType="phone-pad"
+                />
+
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Item Description & Specific Address *"
+                  value={formData.description}
+                  onChangeText={(text) => setFormData({ ...formData, description: text })}
+                  multiline
+                  numberOfLines={4}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Location"
+                  value={formData.location}
+                  onChangeText={(text) => setFormData({ ...formData, location: text })}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.disabledButton]}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#800d0dff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>
+                    {isAuction ? 'Create Auction' : 'Create Ad'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.unLogged}>
+          <Text style={{padding: 20, textAlign: 'center', fontSize: 18}}>Please login to view your profile.</Text>
+          <Button title="Login" onPress={() => {navigation.navigate('Login')}} >Login</Button>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>) : (
-      <View style={styles.unLogged}>
-        <Text style={{padding: 20, textAlign: 'center', fontSize: 18}}>Please login to view your profile.</Text>
-        <Button title="Login" onPress={() => {navigation.navigate('Login')}} >Login</Button>
-      </View>
-    )}
+      )}
     </SafeAreaView>
   );
 };
@@ -411,48 +530,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  authContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-  },
-  authTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#800d0dff',
-    marginBottom: 20,
-  },
-  authMessage: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 30,
-    lineHeight: 24,
-  },
-  loginButton: {
-    backgroundColor: '#800d0dff',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    backgroundColor: '#e0e0e0',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 10,
-  },
-  backButtonText: {
-    color: '#333',
-    fontSize: 16,
   },
   header: {
     backgroundColor: '#800d0dff',
@@ -590,6 +667,43 @@ const styles = StyleSheet.create({
     color: '#800d0d',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  toggleButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  toggleRegular: {
+    backgroundColor: '#ddd',
+  },
+  toggleAuction: {
+    backgroundColor: '#800d0dff',
+  },
+  toggleButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  auctionInfo: {
+    backgroundColor: '#f0f8ff',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  auctionInfoText: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
   },
 });
 
