@@ -247,27 +247,30 @@ export default function Profile({ navigation }) {
                 </TouchableOpacity>
               )}
               
-              <View style={styles.socialIcons}>
-                {profile.social.facebook && (
-                  <TouchableOpacity onPress={() => openLink(profile.social.facebook)}>
-                    <Ionicons name="logo-facebook" size={30} color="black" />
-                  </TouchableOpacity>
-                )}
-                {profile.social.instagram && (
-                  <TouchableOpacity onPress={() => openLink(profile.social.instagram)}>
-                    <Ionicons name="logo-instagram" size={30} color="black" />
-                  </TouchableOpacity>
-                )}
-                {profile.social.linkedin && (
-                  <TouchableOpacity onPress={() => openLink(profile.social.linkedin)}>
-                    <Ionicons name="logo-linkedin" size={30} color="black" />
-                  </TouchableOpacity>
-                )}
+              <View style={styles.socialRow}>
+                <View style={styles.socialIcons}>
+                  {profile.social.facebook && (
+                    <TouchableOpacity onPress={() => openLink(profile.social.facebook)}>
+                      <Ionicons name="logo-facebook" size={30} color="black" />
+                    </TouchableOpacity>
+                  )}
+                  {profile.social.instagram && (
+                    <TouchableOpacity onPress={() => openLink(profile.social.instagram)}>
+                      <Ionicons name="logo-instagram" size={30} color="black" />
+                    </TouchableOpacity>
+                  )}
+                  {profile.social.linkedin && (
+                    <TouchableOpacity onPress={() => openLink(profile.social.linkedin)}>
+                      <Ionicons name="logo-linkedin" size={30} color="black" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.logoutButton}>
+                  <Button title="Logout" color="red" onPress={handleLogout}>Logout</Button>
+                </View>
               </View>
-              
-              <View style={styles.logoutButton}>
-                <Button title="Logout" color='red' onPress={handleLogout}>Logout</Button>
-              </View>
+
             </View>
             
             <View style={styles.profileImageContainer}>
@@ -353,8 +356,8 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   logoutButton: {
-    marginTop: 15,
-    alignSelf: 'flex-start',
+    marginLeft: 'auto',
+    paddingLeft: 115,
   },
   name: {
     fontSize: 24,
@@ -409,6 +412,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: 'blue',
     textDecorationLine: 'underline',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingRight: 10, // keeps logout button aligned to right edge
   },
   socialIcons: {
     flexDirection: 'row',
