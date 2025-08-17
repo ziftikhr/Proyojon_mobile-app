@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
 import AdCard from "../components/AdCard";
+import AdCardAuction from "../components/AdCard_auction";
 
 const HomeScreen = () => {
   const [ads, setAds] = useState([]);
@@ -33,6 +34,8 @@ const HomeScreen = () => {
   const [hasMore, setHasMore] = useState(true);
 
   const [priceModalVisible, setPriceModalVisible] = useState(false);
+  const [auctionModalVisible, setAuctionModalVisible] = useState(false);
+  const [showAuctionAds, setShowAuctionAds] = useState(true);
 
   const ADS_PER_PAGE = 10;
 
@@ -50,24 +53,31 @@ const HomeScreen = () => {
 
   // Helper function to get price value from ad object
   const getPriceFromAd = (ad) => {
+    // Handle auction ads
+    if (ad.isAuction) {
+      return ad.currentBid || ad.startingBid || 0;
+    }
+    
     // Try different possible field names for price
     const possiblePriceFields = ['price', 'Price', 'amount', 'cost', 'value', 'pricing'];
     
     for (const field of possiblePriceFields) {
       if (ad[field] !== undefined && ad[field] !== null) {
-        // console.log(`Found price in field "${field}":`, ad[field]);
         return ad[field];
       }
     }
     
-    // console.log('No price field found in ad:', Object.keys(ad));
     return 'free'; // Default to free if no price found
   };
 
   // Helper function to convert price string to number for sorting
   const priceToNumber = (ad) => {
+    if (ad.isAuction) {
+      const auctionPrice = ad.currentBid || ad.startingBid || 0;
+      return parseFloat(auctionPrice) || 0;
+    }
+    
     const priceStr = getPriceFromAd(ad);
-   // console.log('Converting price:', priceStr); // Debug log
     
     if (!priceStr) return 0;
     
@@ -76,7 +86,6 @@ const HomeScreen = () => {
     
     // Check if it's "free" (case insensitive)
     if (priceString === 'free') {
-    //  console.log('Found free item');
       return 0;
     }
     
@@ -85,7 +94,6 @@ const HomeScreen = () => {
     const numericValue = parseFloat(cleanPrice);
     const result = isNaN(numericValue) ? 0 : numericValue;
     
-   // console.log(`Price "${priceStr}" -> ${result}`); // Debug log
     return result;
   };
 
@@ -204,6 +212,11 @@ const HomeScreen = () => {
         );
       }
 
+      // Filter auction ads based on toggle
+      if (!showAuctionAds) {
+        adsData = adsData.filter((ad) => !ad.isAuction);
+      }
+
       // Apply price sort/filter - but we need to handle with existing ads
       const allAds = [...ads, ...adsData];
       let finalAds = allAds;
@@ -259,10 +272,17 @@ const HomeScreen = () => {
     closePriceModal();
   };
 
+  const openAuctionModal = () => setAuctionModalVisible(true);
+  const closeAuctionModal = () => setAuctionModalVisible(false);
+  const toggleAuctionAds = (value) => {
+    setShowAuctionAds(value);
+    closeAuctionModal();
+  };
+
   return (
     <View style={styles.container}>
 
-      {/* Row: Price button + Search */}
+      {/* Row: Price button + Auction button + Search */}
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
         <TouchableOpacity style={styles.priceButton} onPress={openPriceModal}>
           <Text style={{ color: "#fff", fontWeight: "600" }}>
@@ -271,6 +291,12 @@ const HomeScreen = () => {
               priceSort === 'hightolow' ? 'High→Low' : 
               priceSort === 'free' ? 'Free Only' : ''
             })`}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.priceButton, { marginLeft: 8 }]} onPress={openAuctionModal}>
+          <Text style={{ color: "#fff", fontWeight: "600" }}>
+            Auction {showAuctionAds ? '(All)' : '(Regular)'}
           </Text>
         </TouchableOpacity>
 
@@ -331,6 +357,40 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </Modal>
 
+      {/* Auction Toggle Modal */}
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={auctionModalVisible}
+        onRequestClose={closeAuctionModal}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={closeAuctionModal}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Show Auction Ads</Text>
+
+            <TouchableOpacity onPress={() => toggleAuctionAds(true)} style={styles.modalOption}>
+              <Text style={[styles.modalOptionText, showAuctionAds && styles.selectedOption]}>
+                Show All (Auction + Regular)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => toggleAuctionAds(false)} style={styles.modalOption}>
+              <Text style={[styles.modalOptionText, !showAuctionAds && styles.selectedOption]}>
+                Regular Ads Only
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={closeAuctionModal} style={[styles.modalOption, styles.closeButton]}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <Text style={styles.title}>Filter by Category</Text>
 
       <View style={styles.categoryWrapper}>
@@ -351,7 +411,13 @@ const HomeScreen = () => {
       <FlatList
         data={ads}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <AdCard ad={item} />}
+        renderItem={({ item }) => 
+          item.isAuction ? (
+            showAuctionAds ? <AdCardAuction ad={item} /> : null
+          ) : (
+            <AdCard ad={item} />
+          )
+        }
         contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
         onEndReached={loadMoreAds}
