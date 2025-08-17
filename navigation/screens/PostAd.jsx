@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useAtom } from 'jotai';
 import { userAtom } from '../../atoms/userAtom';
+import { Picker } from '@react-native-picker/picker';
 
 const categories = [
   'Stationaries',
@@ -419,26 +420,28 @@ const PostAd = () => {
                       keyboardType="numeric"
                     />
                     
-                    <TouchableOpacity
-                      style={styles.input}
-                      onPress={() => {
-                        Alert.alert(
-                          'Select Duration',
-                          'Choose auction duration:',
-                          [
-                            { text: '1 Day', onPress: () => setAuctionData({ ...auctionData, duration: '1' }) },
-                            { text: '3 Days', onPress: () => setAuctionData({ ...auctionData, duration: '3' }) },
-                            { text: '7 Days', onPress: () => setAuctionData({ ...auctionData, duration: '7' }) },
-                            { text: '14 Days', onPress: () => setAuctionData({ ...auctionData, duration: '14' }) },
-                            { text: 'Cancel', style: 'cancel' },
-                          ]
-                        );
-                      }}
-                    >
-                      <Text style={{ color: '#000' }}>
-                        Duration: {auctionData.duration} day{auctionData.duration !== '1' ? 's' : ''}
-                      </Text>
-                    </TouchableOpacity>
+                    
+                      <View style={[styles.input, { paddingHorizontal: 10 }]}>
+                      <Picker
+                        selectedValue={auctionData.duration}
+                        onValueChange={(itemValue) =>
+                          setAuctionData({ ...auctionData, duration: itemValue.toString() })
+                        }
+                        mode="dropdown"
+                        style={{ color: '#000' }}
+                      >
+                        <Picker.Item label="Select Duration" value="" enabled={false} color="#888" />
+                        {[...Array(7)].map((_, i) => (
+                          <Picker.Item
+                            key={i + 1}
+                            label={`${i + 1} Day${i + 1 > 1 ? 's' : ''}`}
+                            value={(i + 1).toString()}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+
+
 
                     <View style={styles.auctionInfo}>
                       <Text style={styles.auctionInfoText}>
