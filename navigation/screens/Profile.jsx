@@ -11,14 +11,17 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  TextInput,
 } from 'react-native';
 import React, { useEffect, useState } from 'react'
-import { auth, db } from '../../FirebaseConfig';
+import { auth, db, storage } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { signOut } from 'firebase/auth';
 import { useAtom } from 'jotai';
 import { userAtom } from '../../atoms/userAtom';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 const categories = ["Stationaries", "Books", "Clothes", "Electronics", "Furniture", "Vehicles & Parts", "Games & Hobbies", "Miscellaneous"];
 
@@ -31,6 +34,17 @@ export default function Profile({ navigation }) {
   const [interests, setInterests] = useState([]);
   const [interestModalVisible, setInterestModalVisible] = useState(false);
   const [savingInterests, setSavingInterests] = useState(false);
+  
+  // Edit Profile states
+  const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    facebook: '',
+    instagram: '',
+    linkedin: ''
+  });
 
   const handleLogout = async () => {
     try {
@@ -60,7 +74,6 @@ export default function Profile({ navigation }) {
         interests,
       });
       
-      // Update the user atom with new interests
       setUser(prev => ({ ...prev, interests }));
       
       Alert.alert("Success", "Interests updated successfully");
@@ -70,6 +83,110 @@ export default function Profile({ navigation }) {
       Alert.alert("Error", "Failed to update interests");
     } finally {
       setSavingInterests(false);
+    }
+  };
+
+  // Image picker function
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      uploadImage(result.assets[0]);
+    }
+  };
+
+  // Upload image function (adapted from your web app)
+  const uploadImage = async (imageAsset) => {
+    try {
+      setUploadingImage(true);
+      
+      // Convert image to blob
+      const response = await fetch(imageAsset.uri);
+      const blob = await response.blob();
+      
+      // Create image reference
+      const imgRef = ref(storage, `profile/${Date.now()} - ${imageAsset.fileName || 'profile.jpg'}`);
+      
+      // Delete old image if exists
+      if (user.photoPath) {
+        try {
+          await deleteObject(ref(storage, user.photoPath));
+        } catch (deleteError) {
+          console.log("Old image not found or couldn't be deleted:", deleteError);
+        }
+      }
+      
+      // Upload image
+      const result = await uploadBytes(imgRef, blob);
+      
+      // Get download URL
+      const url = await getDownloadURL(ref(storage, result.ref.fullPath));
+      
+      // Update user document
+      await updateDoc(doc(db, "users", auth.currentUser.uid), {
+        photoUrl: url,
+        photoPath: result.ref.fullPath,
+      });
+
+      // Update local user state
+      setUser(prev => ({
+        ...prev,
+        photoUrl: url,
+        photoPath: result.ref.fullPath
+      }));
+
+      Alert.alert("Success", "Profile photo updated successfully");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      Alert.alert("Error", "Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Initialize edit profile form
+  const openEditProfileModal = () => {
+    setProfileForm({
+      name: user?.name || '',
+      facebook: user?.facebook || '',
+      instagram: user?.instagram || '',
+      linkedin: user?.linkedin || ''
+    });
+    setEditProfileModalVisible(true);
+  };
+
+  // Save profile changes
+  const saveProfileChanges = async () => {
+    try {
+      setEditingProfile(true);
+      
+      const updateData = {
+        name: profileForm.name,
+        facebook: profileForm.facebook,
+        instagram: profileForm.instagram,
+        linkedin: profileForm.linkedin
+      };
+
+      await updateDoc(doc(db, "users", auth.currentUser.uid), updateData);
+
+      // Update local user state
+      setUser(prev => ({
+        ...prev,
+        ...updateData
+      }));
+
+      Alert.alert("Success", "Profile updated successfully");
+      setEditProfileModalVisible(false);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      Alert.alert("Error", "Failed to update profile");
+    } finally {
+      setEditingProfile(false);
     }
   };
 
@@ -100,7 +217,6 @@ export default function Profile({ navigation }) {
 
   useEffect(() => {
     fetchUserAds();
-    // Initialize interests from user data
     if (user?.interests) {
       setInterests(user.interests);
     }
@@ -122,6 +238,126 @@ export default function Profile({ navigation }) {
         </Text>
       </View>
     </View>
+  );
+
+  const renderEditProfileModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={editProfileModalVisible}
+      onRequestClose={() => setEditProfileModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.editModalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <TouchableOpacity
+              onPress={() => setEditProfileModalVisible(false)}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.editFormContainer}>
+            {/* Profile Image Section */}
+            <View style={styles.imageEditSection}>
+              <View style={styles.profileImageEdit}>
+                {user?.photoUrl ? (
+                  <Image source={{ uri: user.photoUrl }} style={styles.editProfileImage} />
+                ) : (
+                  <View style={styles.editProfileImagePlaceholder}>
+                    <Ionicons name="person" size={60} color="#ccc" />
+                  </View>
+                )}
+                {uploadingImage && (
+                  <View style={styles.imageUploadOverlay}>
+                    <ActivityIndicator color="white" size="large" />
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity 
+                style={styles.changePhotoButton} 
+                onPress={pickImage}
+                disabled={uploadingImage}
+              >
+                <Ionicons name="camera" size={16} color="white" />
+                <Text style={styles.changePhotoButtonText}>
+                  {uploadingImage ? 'Uploading...' : 'Change Photo'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Name */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Name</Text>
+              <TextInput
+                style={styles.textInput}
+                value={profileForm.name}
+                onChangeText={(text) => setProfileForm(prev => ({ ...prev, name: text }))}
+                placeholder="Enter your name"
+              />
+            </View>
+
+            {/* Social Media */}
+            <View style={styles.socialSection}>
+              <Text style={styles.sectionTitle}>Social Media</Text>
+              
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Facebook</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={profileForm.facebook}
+                  onChangeText={(text) => setProfileForm(prev => ({ ...prev, facebook: text }))}
+                  placeholder="Facebook profile URL"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Instagram</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={profileForm.instagram}
+                  onChangeText={(text) => setProfileForm(prev => ({ ...prev, instagram: text }))}
+                  placeholder="Instagram profile URL"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>LinkedIn</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={profileForm.linkedin}
+                  onChangeText={(text) => setProfileForm(prev => ({ ...prev, linkedin: text }))}
+                  placeholder="LinkedIn profile URL"
+                />
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.saveButton, { marginBottom: 10 }]}
+              onPress={saveProfileChanges}
+              disabled={editingProfile}
+            >
+              {editingProfile ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setEditProfileModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 
   const renderInterestModal = () => (
@@ -197,7 +433,7 @@ export default function Profile({ navigation }) {
     ),
     location: (user?.location?.city ? user?.location?.city + ', ' : '') + 
               (user?.location?.state ? user?.location?.state + ', ' : '') + 
-              (user?.location?.country ? user?.location?.country : 'Not specified'),
+              (user?.location?.country ? user?.location?.country : 'Not Specified'),
     website: `${user?.email || 'https://example.com'}`,
     social: {
       facebook: user?.facebook || 'https://facebook.com',
@@ -222,12 +458,17 @@ export default function Profile({ navigation }) {
               <Text style={styles.username}>{profile.username}</Text>
               <Text style={styles.bio}>{profile.bio}</Text>
               
+              {/* Edit Profile Button */}
+              <TouchableOpacity
+                style={styles.editProfileButton}
+                onPress={openEditProfileModal}
+              >
+                <Ionicons name="create" size={16} color="white" />
+                <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+              
               {/* Interests Section */}
               <View style={styles.interestsSection}>
-                <Text style={styles.interestsTitle}>Interests:</Text>
-                <Text style={styles.interestsText}>
-                  {user?.interests?.length > 0 ? user.interests.join(", ") : "No interests selected yet."}
-                </Text>
                 <TouchableOpacity
                   style={styles.editInterestsButton}
                   onPress={() => setInterestModalVisible(true)}
@@ -325,6 +566,7 @@ export default function Profile({ navigation }) {
         </View>
       )}
       
+      {renderEditProfileModal()}
       {renderInterestModal()}
     </SafeAreaView>
   );
@@ -373,6 +615,21 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     paddingRight: 20,
   },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#28a745',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    marginTop: 15,
+  },
+  editProfileButtonText: {
+    color: 'white',
+    fontSize: 14,
+    marginLeft: 5,
+  },
   interestsSection: {
     marginTop: 15,
     paddingRight: 20,
@@ -418,7 +675,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 10,
-    paddingRight: 10, // keeps logout button aligned to right edge
+    paddingRight: 10,
   },
   socialIcons: {
     flexDirection: 'row',
@@ -507,6 +764,12 @@ const styles = StyleSheet.create({
     width: '90%',
     maxHeight: '80%',
   },
+  editModalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    width: '95%',
+    maxHeight: '90%',
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -521,6 +784,87 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 5,
+  },
+  editFormContainer: {
+    padding: 20,
+  },
+  imageEditSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  profileImageEdit: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  editProfileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  editProfileImagePlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageUploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  changePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007bff',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  changePhotoButtonText: {
+    color: 'white',
+    fontSize: 14,
+    marginLeft: 5,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  bioInput: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  locationSection: {
+    marginBottom: 25,
+  },
+  socialSection: {
+    marginBottom: 25,
   },
   categoriesContainer: {
     maxHeight: 300,
@@ -566,6 +910,18 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#6c757d',
+    paddingVertical: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
