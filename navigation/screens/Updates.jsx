@@ -13,11 +13,13 @@ import { collection, query, where, getDocs, orderBy, limit, startAfter } from 'f
 import { db } from '../../FirebaseConfig';
 import { useAtom } from 'jotai';
 import { userAtom } from '../../atoms/userAtom';
+import { updatesCountAtom } from '../../atoms/UpdatesCountAtom'; // Import the new atom
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Updates({ navigation }) {
   const [user] = useAtom(userAtom);
   const [interestedAds, setInterestedAds] = useState([]);
+  const [updatesCount, setUpdatesCount] = useAtom(updatesCountAtom); // Use the atom
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -38,6 +40,7 @@ export default function Updates({ navigation }) {
 
       if (!user?.interests || user.interests.length === 0) {
         setInterestedAds([]);
+        setUpdatesCount(0); // Update count
         setLoading(false);
         return;
       }
@@ -81,9 +84,20 @@ export default function Updates({ navigation }) {
           ) && ad.postedBy !== user.uid
       );
 
-      setInterestedAds((prev) =>
-        reset ? filteredAds : [...prev, ...filteredAds]
-      );
+      // Prevent duplicate ads by filtering out existing IDs
+      const existingIds = reset ? [] : interestedAds.map(ad => ad.id);
+      const uniqueFilteredAds = filteredAds.filter(ad => !existingIds.includes(ad.id));
+      
+      const updatedAds = reset ? filteredAds : [...interestedAds, ...uniqueFilteredAds];
+      setInterestedAds(updatedAds);
+      
+      // Update the count - if this is the first load (reset), set the count
+      // Otherwise, we're loading more, so add to existing count
+      if (reset) {
+        setUpdatesCount(filteredAds.length);
+      } else {
+        setUpdatesCount(updatedAds.length);
+      }
 
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
     } catch (err) {
@@ -92,6 +106,39 @@ export default function Updates({ navigation }) {
     } finally {
       setLoading(false);
       setLoadingMore(false);
+    }
+  };
+
+  // Function to get total count (for more accurate counting)
+  const fetchTotalCount = async () => {
+    try {
+      if (!user?.interests || user.interests.length === 0) {
+        setUpdatesCount(0);
+        return;
+      }
+
+      const adsRef = collection(db, 'ads');
+      const q = query(adsRef, orderBy('publishedAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+
+      const allAds = [];
+      querySnapshot.forEach((doc) => {
+        allAds.push({ id: doc.id, ...doc.data() });
+      });
+
+      const filteredAds = allAds.filter(
+        (ad) =>
+          user.interests.some(
+            (interest) =>
+              ad.category &&
+              ad.category.includes &&
+              ad.category.includes(interest)
+          ) && ad.postedBy !== user.uid
+      );
+
+      setUpdatesCount(filteredAds.length);
+    } catch (err) {
+      console.error('Error fetching total count:', err);
     }
   };
 
@@ -111,6 +158,10 @@ export default function Updates({ navigation }) {
   useEffect(() => {
     if (user) {
       fetchInterestedAds(true);
+      // Also fetch total count for badge
+      fetchTotalCount();
+    } else {
+      setUpdatesCount(0);
     }
   }, [user]);
 
@@ -175,7 +226,7 @@ export default function Updates({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Updates for You</Text>
         <Text style={styles.headerSubtitle}>
-          Based on your interests: {user.interests.join(', ')}
+          Based on your interests: {user.interests.join(', ')} ({updatesCount} ads found)
         </Text>
       </View>
 
@@ -193,7 +244,7 @@ export default function Updates({ navigation }) {
       ) : (
         <FlatList
           data={interestedAds}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`} // Ensure unique keys
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
