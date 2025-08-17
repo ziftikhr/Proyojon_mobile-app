@@ -20,7 +20,8 @@ import { useAtom } from 'jotai';
 import { userAtom } from '../atoms/userAtom';
 import logo from '../assets/proyojon.png';
 import DetailedAdScreen from "./screens/DetailedAdScreen";
-import ChatIconWithBadge from './components/ChatIconWithBadge'; // Import the new component
+import ChatIconWithBadge from './components/ChatIconWithBadge';
+import UpdatesIconWithBadge from './components/UpdateIconWithBadge'; // Import the new component
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -34,11 +35,20 @@ function HomeTabs({ navigation }) {
         screenOptions={({ route }) => ({
           tabBarIcon: ({ color, size }) => {
             let iconName;
-            if (route.name === 'Home') iconName = 'home';
-            else if (route.name === 'Cart') iconName = 'cart';
-            else if (route.name === 'Updates') iconName = 'notifications';
-            else if (route.name === 'PostAdButton') iconName = 'add-circle';
-            return <Ionicons name={iconName} size={size} color={color} />;
+            if (route.name === 'Home') {
+              iconName = 'home';
+              return <Ionicons name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Cart') {
+              iconName = 'cart';
+              return <Ionicons name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Updates') {
+              // Use the custom icon with badge for Updates
+              return <UpdatesIconWithBadge color={color} size={size} />;
+            } else if (route.name === 'PostAdButton') {
+              iconName = 'add-circle';
+              return <Ionicons name={iconName} size={size} color={color} />;
+            }
+            return <Ionicons name="home" size={size} color={color} />;
           },
           tabBarActiveTintColor: '#800d0dff',
           tabBarInactiveTintColor: 'gray',
