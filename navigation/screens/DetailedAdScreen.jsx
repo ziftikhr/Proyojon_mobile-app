@@ -74,7 +74,7 @@ const DetailedAdScreen = ({ navigation }) => {
             ad: adId,
             users: [loggedInUser, ad.postedBy],
             lastUpdated: new Date(),
-          });
+          }, { merge: true });
         } catch (error) {
           console.error("Error creating chatroom:", error);
         }

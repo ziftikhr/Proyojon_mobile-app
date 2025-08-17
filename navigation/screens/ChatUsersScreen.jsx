@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Text,
   Alert,
-  Pressable, 
 } from 'react-native';
 import {
   collection,
@@ -18,6 +17,8 @@ import {
   onSnapshot,
   orderBy,
   deleteDoc,
+  limit,
+  startAfter,
 } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
 import User from '../components/User';
@@ -29,9 +30,15 @@ const ChatUsersScreen = ({ navigation }) => {
   const [online, setOnline] = useState({});
   const [unreadMessages, setUnreadMessages] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastVisible, setLastVisible] = useState(null);
   const [user] = useAtom(userAtom);
   const user1 = user?.uid;
 
+  const CHATS_PER_PAGE = 10;
+
+  // 🔹 First Page (real-time)
   useEffect(() => {
     if (!user1) {
       setLoading(false);
@@ -44,18 +51,21 @@ const ChatUsersScreen = ({ navigation }) => {
     const q = query(
       msgRef,
       where('users', 'array-contains', user1),
-      orderBy('lastUpdated', 'desc')
+      orderBy('lastUpdated', 'desc'),
+      limit(CHATS_PER_PAGE)
     );
 
     const unsub = onSnapshot(q, async (msgsSnap) => {
       const userList = [];
       const unreadStatus = {};
 
+      let lastDoc = null;
+
       for (const docSnap of msgsSnap.docs) {
         const message = docSnap.data();
         const messageId = docSnap.id;
 
-        // Only mark as unread if last message was not sent by me
+        // Unread check
         const hasUnread =
           message.lastUnread === true && message.lastSender !== user1;
         unreadStatus[messageId] = hasUnread;
@@ -84,7 +94,7 @@ const ChatUsersScreen = ({ navigation }) => {
 
           userList.push(userItem);
 
-          // Track online status
+          // Online tracking
           onSnapshot(otherRef, (doc) => {
             setOnline((prev) => ({
               ...prev,
@@ -92,9 +102,11 @@ const ChatUsersScreen = ({ navigation }) => {
             }));
           });
         }
+
+        lastDoc = docSnap; // track last
       }
 
-      // Sort by unread first, then by lastUpdated
+      // Sort unread first
       userList.sort((a, b) => {
         if (a.hasUnread && !b.hasUnread) return -1;
         if (!a.hasUnread && b.hasUnread) return 1;
@@ -103,12 +115,92 @@ const ChatUsersScreen = ({ navigation }) => {
 
       setUsers(userList);
       setUnreadMessages(unreadStatus);
+      setLastVisible(lastDoc);
+      setHasMore(msgsSnap.docs.length === CHATS_PER_PAGE);
       setLoading(false);
     });
 
     return () => unsub();
   }, [user1]);
 
+  // 🔹 Load more (pagination)
+  const loadMore = async () => {
+    if (loadingMore || !hasMore || !lastVisible) return;
+
+    setLoadingMore(true);
+
+    try {
+      const msgRef = collection(db, 'messages');
+      const q = query(
+        msgRef,
+        where('users', 'array-contains', user1),
+        orderBy('lastUpdated', 'desc'),
+        startAfter(lastVisible),
+        limit(CHATS_PER_PAGE)
+      );
+
+      const msgsSnap = await getDocs(q);
+
+      const newUsers = [];
+      const unreadStatus = {};
+
+      let lastDoc = null;
+
+      for (const docSnap of msgsSnap.docs) {
+        const message = docSnap.data();
+        const messageId = docSnap.id;
+
+        const hasUnread =
+          message.lastUnread === true && message.lastSender !== user1;
+        unreadStatus[messageId] = hasUnread;
+
+        const adRef = doc(db, 'ads', message.ad);
+        const otherRef = doc(
+          db,
+          'users',
+          message.users.find((id) => id !== user1)
+        );
+
+        const [adDoc, otherDoc] = await Promise.all([
+          getDoc(adRef),
+          getDoc(otherRef),
+        ]);
+
+        if (adDoc.exists() && otherDoc.exists()) {
+          const userItem = {
+            id: messageId,
+            ad: adDoc.data(),
+            me: user,
+            other: otherDoc.data(),
+            hasUnread,
+            lastUpdated: message.lastUpdated,
+          };
+
+          newUsers.push(userItem);
+
+          onSnapshot(otherRef, (doc) => {
+            setOnline((prev) => ({
+              ...prev,
+              [doc.data().uid]: doc.data().isOnline,
+            }));
+          });
+        }
+
+        lastDoc = docSnap;
+      }
+
+      setUsers((prev) => [...prev, ...newUsers]);
+      setUnreadMessages((prev) => ({ ...prev, ...unreadStatus }));
+      setLastVisible(lastDoc);
+      setHasMore(msgsSnap.docs.length === CHATS_PER_PAGE);
+    } catch (err) {
+      console.error('Error loading more chats:', err);
+    }
+
+    setLoadingMore(false);
+  };
+
+  // 🔹 Delete Chat
   const handleDeleteChat = (chatId) => {
     Alert.alert(
       'Delete Chat',
@@ -173,6 +265,13 @@ const ChatUsersScreen = ({ navigation }) => {
             onLongPress={() => handleDeleteChat(item.id)}
           />
         )}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator size="small" color="maroon" style={{ margin: 10 }} />
+          ) : null
+        }
       />
     </View>
   );
@@ -193,14 +292,6 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 16,
     color: '#666',
-  },
-  userItemContainer: {
-    backgroundColor: 'transparent',
-  },
-  unreadContainer: {
-    backgroundColor: '#e3f2fd',
-    borderLeftWidth: 4,
-    borderLeftColor: '#1976d2',
   },
 });
 
