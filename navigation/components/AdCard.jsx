@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { doc, onSnapshot, setDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, updateDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
 import { db, auth } from "../../FirebaseConfig";
 
 import { useAtom } from "jotai";
@@ -14,6 +14,9 @@ const AdCard = ({ ad }) => {
   const [liked, setLiked] = useState(false);
   const [users, setUsers] = useState([]);
   const [user] = useAtom(userAtom);
+  const [isLoading, setIsLoading] = useState(false);
+
+  
 
   // Helper function to get price value from ad object
   const getPriceFromAd = (ad) => {
@@ -48,40 +51,84 @@ const AdCard = ({ ad }) => {
   };
 
   useEffect(() => {
+    if (!ad?.id) {
+      console.error('AdCard - No ad.id provided');
+      return;
+    }
+
     const docRef = doc(db, "favorites", ad.id);
 
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      console.log('AdCard - Firestore snapshot received:', snapshot.exists());
+      
       if (snapshot.exists()) {
-        const favUsers = snapshot.data().users || [];
+        const data = snapshot.data();
+        const favUsers = data.users || [];
+        console.log('AdCard - Favorite users from Firestore:', favUsers);
+        
         setUsers(favUsers);
-        setLiked(favUsers.includes(user?.uid));
+        
+        // Check if current user is in the favorites list
+        const isCurrentUserLiked = user?.uid ? favUsers.includes(user.uid) : false;
+        console.log('AdCard - Is current user liked?', isCurrentUserLiked);
+        setLiked(isCurrentUserLiked);
       } else {
+        console.log('AdCard - No favorites document exists for this ad');
         setUsers([]);
         setLiked(false);
       }
+    }, (error) => {
+      console.error('AdCard - Firestore listener error:', error);
     });
 
     return () => unsubscribe();
-  }, [ad.id]);
+  }, [ad.id, user?.uid]); // Added user?.uid to dependencies
 
   const toggleLike = async () => {
+    if (!user?.uid) {
+      console.error('AdCard - No user logged in');
+      return;
+    }
+
+    if (isLoading) {
+      console.log('AdCard - Toggle already in progress');
+      return;
+    }
+
+    setIsLoading(true);
     const docRef = doc(db, "favorites", ad.id);
-    const uid = user?.uid;
+    const uid = user.uid;
+
+    console.log('AdCard - Toggling like. Current liked state:', liked);
 
     try {
       if (liked) {
+        console.log('AdCard - Removing user from favorites');
         await updateDoc(docRef, {
           users: arrayRemove(uid),
         });
       } else {
+        console.log('AdCard - Adding user to favorites');
         await setDoc(docRef, {
           users: arrayUnion(uid),
+          adId: ad.id, // Store ad ID for reference
+          createdAt: new Date().toISOString(),
         }, { merge: true });
       }
+      console.log('AdCard - Toggle operation completed successfully');
     } catch (error) {
-      console.error("Error toggling like:", error);
+      console.error("AdCard - Error toggling like:", error);
+      // Optionally show an error message to user
+      // Alert.alert('Error', 'Failed to update favorite status');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Early return if no user is logged in
+  if (!user?.uid) {
+    console.log('AdCard - No user logged in, hiding favorite button');
+  }
 
   return (
     <TouchableOpacity
@@ -98,14 +145,28 @@ const AdCard = ({ ad }) => {
         </Text>
       </View>
 
-      <TouchableOpacity onPress={toggleLike} style={styles.heartButton} disabled={!user}>
-        <Ionicons
-          name={liked ? "heart" : "heart-outline"}
-          size={24}
-          color={liked ? "red" : "gray"}
-        />
-        <Text style={styles.likeCount}>{users.length}</Text>
-      </TouchableOpacity>
+      {user?.uid && (
+        <TouchableOpacity 
+          onPress={toggleLike} 
+          style={[
+            styles.heartButton,
+            isLoading && styles.heartButtonDisabled
+          ]} 
+          disabled={isLoading}
+        >
+          <Ionicons
+            name={liked ? "heart" : "heart-outline"}
+            size={24}
+            color={liked ? "#ff4757" : "#747d8c"} // Changed colors for better visibility
+          />
+          <Text style={[
+            styles.likeCount,
+            liked && styles.likeCountActive
+          ]}>
+            {users.length}
+          </Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 };
@@ -149,11 +210,30 @@ const styles = StyleSheet.create({
     right: 10,
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  heartButtonDisabled: {
+    opacity: 0.6,
   },
   likeCount: {
     marginLeft: 4,
     fontSize: 13,
     color: "#555",
+  },
+  likeCountActive: {
+    color: "#ff4757",
+    fontWeight: "600",
   },
 });
 

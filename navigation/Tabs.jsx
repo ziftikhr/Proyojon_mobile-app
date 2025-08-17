@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Pressable, Text, TouchableOpacity, View, StyleSheet, Image } from 'react-native';
 
 import Home from './screens/Home';
 import Profile from './screens/Profile';
@@ -52,6 +52,12 @@ function HomeTabs({ navigation }) {
                 onPress={() => navigation.navigate('ChatUsers')} 
               />
             </>
+          ),
+          headerTitle: () => (
+            <Image
+              source={logo}
+              style={{ width: 120, height: 40, resizeMode: 'contain' }}
+            />
           ),
         })}
       >

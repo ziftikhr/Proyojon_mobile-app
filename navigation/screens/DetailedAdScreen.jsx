@@ -11,7 +11,7 @@ import {
 import { useRoute } from "@react-navigation/native";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
-import Ionicons from "@expo/vector-icons";
+import { Ionicons } from '@expo/vector-icons';  // Fixed import
 import moment from "moment";
 import { useAtom } from "jotai";
 import { userAtom } from "../../atoms/userAtom";
@@ -74,7 +74,7 @@ const DetailedAdScreen = ({ navigation }) => {
             ad: adId,
             users: [loggedInUser, ad.postedBy],
             lastUpdated: new Date(),
-          });
+          }, { merge: true });
         } catch (error) {
           console.error("Error creating chatroom:", error);
         }
@@ -108,9 +108,10 @@ const DetailedAdScreen = ({ navigation }) => {
       {showNumber ? (
         <>
           {user ? (
-            <Text style={styles.contactText}>
-              <Ionicons name="call" size={16} /> {ad.contactnum}
-            </Text>
+            <View style={styles.contactContainer}>
+              <Ionicons name="call" size={16} color="#000" style={styles.contactIcon} />
+              <Text style={styles.contactText}>{ad.contactnum}</Text>
+            </View>
           ) : (
             <Text style={styles.contactText}>Login to see contact info</Text>
           )}
@@ -197,9 +198,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+  contactContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  contactIcon: {
+    marginRight: 5,
+  },
   contactText: {
     fontSize: 16,
-    marginTop: 10,
     color: "#000",
   },
 });
