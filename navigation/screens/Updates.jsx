@@ -2,14 +2,14 @@ import { Text } from '@react-navigation/elements';
 import { 
   StyleSheet, 
   View, 
-  ScrollView, 
   ActivityIndicator, 
   Image, 
   TouchableOpacity,
-  RefreshControl 
+  RefreshControl, 
+  FlatList
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import React, { useEffect, useState, useCallback } from 'react';
+import { collection, query, where, getDocs, orderBy, limit, startAfter } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
 import { useAtom } from 'jotai';
 import { userAtom } from '../../atoms/userAtom';
@@ -21,56 +21,96 @@ export default function Updates({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [lastVisible, setLastVisible] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchInterestedAds = async () => {
+  const ADS_PER_PAGE = 4;
+
+  const fetchInterestedAds = async (reset = false) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        setLastVisible(null);
+        setHasMore(true);
+      }
       setError(null);
-      
+
       if (!user?.interests || user.interests.length === 0) {
         setInterestedAds([]);
         setLoading(false);
         return;
       }
 
-      // Get all ads that match user interests
       const adsRef = collection(db, 'ads');
-      const q = query(
+      let q = query(
         adsRef,
-        orderBy('publishedAt', 'desc')
+        orderBy('publishedAt', 'desc'),
+        limit(ADS_PER_PAGE)
       );
-      
+
+      if (lastVisible && !reset) {
+        q = query(
+          adsRef,
+          orderBy('publishedAt', 'desc'),
+          startAfter(lastVisible),
+          limit(ADS_PER_PAGE)
+        );
+      }
+
       const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
+
       const allAds = [];
       querySnapshot.forEach((doc) => {
         allAds.push({ id: doc.id, ...doc.data() });
       });
 
-      // Filter ads that match user interests and exclude user's own ads
-      const filteredAds = allAds.filter((ad) => 
-        user.interests.some((interest) => 
-          ad.category && ad.category.includes && ad.category.includes(interest)
-        ) && ad.postedBy !== user.uid // Exclude user's own ads
+      const filteredAds = allAds.filter(
+        (ad) =>
+          user.interests.some(
+            (interest) =>
+              ad.category &&
+              ad.category.includes &&
+              ad.category.includes(interest)
+          ) && ad.postedBy !== user.uid
       );
 
-      setInterestedAds(filteredAds);
+      setInterestedAds((prev) =>
+        reset ? filteredAds : [...prev, ...filteredAds]
+      );
+
+      setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
     } catch (err) {
       setError('Failed to load updates.');
       console.error('Error fetching interested ads:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchInterestedAds();
+    await fetchInterestedAds(true); // reset pagination
     setRefreshing(false);
+  };
+
+  const loadMore = async () => {
+    if (!loadingMore && hasMore) {
+      setLoadingMore(true);
+      await fetchInterestedAds(false);
+    }
   };
 
   useEffect(() => {
     if (user) {
-      fetchInterestedAds();
+      fetchInterestedAds(true);
     }
   }, [user]);
 
@@ -107,14 +147,25 @@ export default function Updates({ navigation }) {
       <View style={styles.container}>
         <View style={styles.messageContainer}>
           <Ionicons name="heart-outline" size={60} color="#ccc" />
-          <Text style={styles.messageText}>Set your interests in Profile to see relevant updates</Text>
-          <TouchableOpacity 
+          <Text style={styles.messageText}>
+            Set your interests in Profile to see relevant updates
+          </Text>
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('Profile')}
           >
             <Text style={styles.actionButtonText}>Go to Profile</Text>
           </TouchableOpacity>
         </View>
+      </View>
+    );
+  }
+
+  if (loading && interestedAds.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007bff" />
+        <Text style={styles.loadingText}>Finding ads you might like...</Text>
       </View>
     );
   }
@@ -128,91 +179,90 @@ export default function Updates({ navigation }) {
         </Text>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Finding ads you might like...</Text>
-        </View>
-      ) : error ? (
+      {error ? (
         <View style={styles.messageContainer}>
           <Ionicons name="alert-circle-outline" size={60} color="#ff6b6b" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchInterestedAds}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchInterestedAds(true)}
+          >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView
-          style={styles.scrollView}
+        <FlatList
+          data={interestedAds}
+          keyExtractor={(item) => item.id}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#007bff']}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-        >
-          {interestedAds.length > 0 ? (
-            <>
-              <View style={styles.statsContainer}>
-                <Text style={styles.statsText}>
-                  {interestedAds.length} ads match your interests
+          renderItem={({ item: ad }) => (
+            <TouchableOpacity
+              style={styles.adCard}
+              onPress={() => handleAdPress(ad)}
+            >
+              <View style={styles.adContent}>
+                {ad.images && ad.images.length > 0 ? (
+                  <Image
+                    source={{ uri: ad.images[0].url }}
+                    style={styles.adImage}
+                  />
+                ) : (
+                  <View style={[styles.adImage, styles.noImage]}>
+                    <Ionicons name="image-outline" size={30} color="#ccc" />
+                  </View>
+                )}
+
+                <View style={styles.adInfo}>
+                  <Text style={styles.adTitle} numberOfLines={2}>
+                    {ad.title}
+                  </Text>
+                  <Text style={styles.adCategory}>{ad.category}</Text>
+                  <Text style={styles.adPrice}>
+                    {ad.Price?.toLowerCase() === 'free'
+                      ? 'Free'
+                      : `৳${ad.Price}`}
+                  </Text>
+                  <Text style={styles.adDate}>
+                    {formatDate(ad.publishedAt)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.interestBadge}>
+                <Ionicons name="heart" size={12} color="#ff4757" />
+                <Text style={styles.interestBadgeText}>
+                  Matches your interest
                 </Text>
               </View>
-              
-              {interestedAds.map((ad) => (
-                <TouchableOpacity
-                  key={ad.id}
-                  style={styles.adCard}
-                  onPress={() => handleAdPress(ad)}
-                >
-                  <View style={styles.adContent}>
-                    {ad.images && ad.images.length > 0 ? (
-                      <Image 
-                        source={{ uri: ad.images[0].url }} 
-                        style={styles.adImage} 
-                      />
-                    ) : (
-                      <View style={[styles.adImage, styles.noImage]}>
-                        <Ionicons name="image-outline" size={30} color="#ccc" />
-                      </View>
-                    )}
-                    
-                    <View style={styles.adInfo}>
-                      <Text style={styles.adTitle} numberOfLines={2}>
-                        {ad.title}
-                      </Text>
-                      <Text style={styles.adCategory}>
-                        {ad.category}
-                      </Text>
-                      <Text style={styles.adPrice}>
-                        {ad.Price?.toLowerCase() === 'free' ? 'Free' : `৳${ad.Price}`}
-                      </Text>
-                      <Text style={styles.adDate}>
-                        {formatDate(ad.publishedAt)}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.interestBadge}>
-                    <Ionicons name="heart" size={12} color="#ff4757" />
-                    <Text style={styles.interestBadgeText}>Matches your interest</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </>
-          ) : (
-            <View style={styles.messageContainer}>
-              <Ionicons name="search-outline" size={60} color="#ccc" />
-              <Text style={styles.messageText}>
-                No ads match your interests yet
-              </Text>
-              <Text style={styles.subMessageText}>
-                Check back later or update your interests in Profile
-              </Text>
-            </View>
+            </TouchableOpacity>
           )}
-        </ScrollView>
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator
+                size="small"
+                color="#007bff"
+                style={{ marginVertical: 10 }}
+              />
+            ) : null
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            !loading && (
+              <View style={styles.messageContainer}>
+                <Ionicons name="search-outline" size={60} color="#ccc" />
+                <Text style={styles.messageText}>
+                  No ads match your interests yet
+                </Text>
+                <Text style={styles.subMessageText}>
+                  Check back later or update your interests in Profile
+                </Text>
+              </View>
+            )
+          }
+        />
       )}
     </View>
   );
