@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, View, Text, FlatList,
-  Image, ActivityIndicator, TouchableOpacity
+  Image, ActivityIndicator, TouchableOpacity, Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { db } from '../../FirebaseConfig';
-import { collection, query, where, getDocs, documentId } from 'firebase/firestore';
+import { collection, query, where, getDocs, documentId, doc, deleteDoc } from 'firebase/firestore';
 import { userAtom } from '../../atoms/userAtom';
 import { useAtom } from 'jotai';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,8 @@ export default function Cart() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user] = useAtom(userAtom);
-  const [activeTab, setActiveTab] = useState('favorites'); 
+  const [activeTab, setActiveTab] = useState('favorites');
+  const [deletingId, setDeletingId] = useState(null); // Track which ad is being deleted
 
   const fetchUserAds = async () => {
     try {
@@ -74,6 +75,51 @@ export default function Cart() {
     }
   };
 
+  const handleDeleteAd = async (adId, adTitle) => {
+    Alert.alert(
+      'Delete Ad',
+      `Are you sure you want to delete "${adTitle}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingId(adId);
+              
+              // Delete the ad document
+              const adDocRef = doc(db, 'ads', adId);
+              await deleteDoc(adDocRef);
+              
+              // Also delete from favorites collection if it exists
+              try {
+                const favDocRef = doc(db, 'favorites', adId);
+                await deleteDoc(favDocRef);
+              } catch (favError) {
+                // It's okay if favorites document doesn't exist
+                console.log('No favorites document to delete');
+              }
+              
+              // Remove from local state
+              setAds(prevAds => prevAds.filter(ad => ad.id !== adId));
+              
+              Alert.alert('Success', 'Ad deleted successfully!');
+            } catch (error) {
+              console.error('Error deleting ad:', error);
+              Alert.alert('Error', 'Failed to delete ad. Please try again.');
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     if (activeTab === 'myAds') {
       fetchUserAds();
@@ -106,6 +152,23 @@ export default function Cart() {
           </View>
         )}
       </View>
+      
+      {/* Delete button - only show for user's own ads */}
+      {activeTab === 'myAds' && (
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteAd(item.id, item.title)}
+            disabled={deletingId === item.id}
+          >
+            {deletingId === item.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="trash" size={20} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -220,6 +283,27 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 12,
     color: '#555',
+  },
+  actionsContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  deleteButton: {
+    backgroundColor: '#dc3545',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   centered: {
     flex: 1,
