@@ -519,7 +519,7 @@ export default function Profile({ navigation }) {
             </View>
           </View>
 
-          <View style={styles.postsContainer}>
+          {/* <View style={styles.postsContainer}>
             <Text style={styles.adsTitle}>My Ads</Text>
             {loading ? (
               <ActivityIndicator size="large" color="maroon" />
@@ -557,7 +557,7 @@ export default function Profile({ navigation }) {
                 )}
               </>
             )}
-          </View>
+          </View> */}
         </ScrollView>
       ) : (
         <View style={styles.unLogged}>
