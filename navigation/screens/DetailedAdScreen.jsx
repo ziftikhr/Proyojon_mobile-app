@@ -32,6 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import moment from "moment";
 import { useAtom } from "jotai";
 import { userAtom } from "../../atoms/userAtom";
+import SellerProfile from "../components/SellerProfile";
 
 const DetailedAdScreen = ({ navigation }) => {
   const route = useRoute();
@@ -352,16 +353,17 @@ const DetailedAdScreen = ({ navigation }) => {
     return Math.max(currentBid, startingPrice) + bidIncrement;
   };
 
-  const navigateToSellerProfile = () => {
-    if (publisher) {
-      // Temporarily show owner info in an alert instead of navigation
-      Alert.alert(
-        "Owner's Information", 
-        `Name: ${publisher.name || 'Anonymous'}\nMember since: ${publisher.createdAt ? moment(publisher.createdAt.toDate()).format('MMM YYYY') : 'Unknown'}`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
+const navigateToSellerProfile = () => {
+  if (publisher && ad) {
+    // Navigate to SellerProfile screen with seller data
+    navigation.navigate("SellerProfile", { 
+      sellerId: ad.postedBy,
+      sellerData: publisher 
+    });
+  } else {
+    Alert.alert("Error", "Seller information not available");
+  }
+};
 
   if (loading) {
     return (
