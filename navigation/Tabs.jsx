@@ -23,6 +23,7 @@ import DetailedAdScreen from "./screens/DetailedAdScreen";
 import ChatIconWithBadge from './components/ChatIconWithBadge';
 import UpdatesIconWithBadge from './components/UpdateIconWithBadge'; // Import the new component
 import AuctionScreen from './screens/AuctionScreen';
+import SellerProfile from './components/SellerProfile';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -164,6 +165,21 @@ export default function Tabs() {
         component={NotFound}
         options={{ title: '404' }}
       />
+
+        <Stack.Screen 
+    name="SellerProfile" 
+    component={SellerProfile}
+    options={{
+      title: 'Seller Profile',
+      headerStyle: {
+        backgroundColor: '#800d0d',
+      },
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: 'bold',
+      },
+    }}
+/>
 
       <Stack.Screen name="ChatUsers" component={ChatUsersScreen} options={{ title: 'Chats' }} />
       <Stack.Screen name="ChatMessages" component={ChatMessagesScreen} />

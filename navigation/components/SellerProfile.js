@@ -128,6 +128,27 @@ const SellerProfile = ({ navigation }) => {
     return `৳${ad.Price}`;
   };
 
+  // Helper function to format location
+  const formatLocation = (location) => {
+    if (!location) return '';
+    
+    // If location is a string, return it directly
+    if (typeof location === 'string') {
+      return location;
+    }
+    
+    // If location is an object, format it
+    if (typeof location === 'object') {
+      const parts = [];
+      if (location.city) parts.push(location.city);
+      if (location.state) parts.push(location.state);
+      if (location.country) parts.push(location.country);
+      return parts.join(', ');
+    }
+    
+    return '';
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -152,6 +173,8 @@ const SellerProfile = ({ navigation }) => {
     { key: 'whatsapp', icon: 'logo-whatsapp', color: '#25D366' },
     { key: 'telegram', icon: 'paper-plane', color: '#0088CC' },
   ];
+
+  const formattedLocation = formatLocation(seller.location);
 
   return (
     <ScrollView style={styles.container}>
@@ -187,7 +210,7 @@ const SellerProfile = ({ navigation }) => {
         )}
 
         {/* Contact Info */}
-        <View style={styles.contactSection}>
+        {/* <View style={styles.contactSection}>
           <Text style={styles.sectionTitle}>Contact Information</Text>
           
           {seller.phone && (
@@ -200,10 +223,10 @@ const SellerProfile = ({ navigation }) => {
             </TouchableOpacity>
           )}
           
-          {seller.location && (
+          {formattedLocation && (
             <View style={styles.contactItem}>
               <Ionicons name="location" size={20} color="#800d0d" />
-              <Text style={styles.contactText}>{seller.location}</Text>
+              <Text style={styles.contactText}>{formattedLocation}</Text>
             </View>
           )}
           
@@ -216,14 +239,15 @@ const SellerProfile = ({ navigation }) => {
               <Text style={styles.contactText}>{seller.website}</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </View> */}
 
         {/* Social Media Links */}
         <View style={styles.socialSection}>
           <Text style={styles.sectionTitle}>Social Media</Text>
           <View style={styles.socialContainer}>
             {socialPlatforms.map(platform => {
-              const username = seller.socials?.[platform.key];
+              // Access social media links directly from seller object, not from seller.socials
+              const username = seller[platform.key];
               if (!username) return null;
               
               return (
@@ -237,7 +261,7 @@ const SellerProfile = ({ navigation }) => {
               );
             })}
             
-            {socialPlatforms.every(platform => !seller.socials?.[platform.key]) && (
+            {socialPlatforms.every(platform => !seller[platform.key]) && (
               <Text style={styles.noSocialText}>No social media links available</Text>
             )}
           </View>
@@ -280,7 +304,7 @@ const SellerProfile = ({ navigation }) => {
                     {formatPrice(ad)}
                   </Text>
                   <Text style={styles.adLocation} numberOfLines={1}>
-                    {ad.location}
+                    {formatLocation(ad.location)}
                   </Text>
                   {ad.isAuction && (
                     <View style={styles.auctionBadge}>
