@@ -78,16 +78,16 @@ const SellerProfile = ({ navigation }) => {
     let url = '';
     switch (platform) {
       case 'facebook':
-        url = `https://facebook.com/${username}`;
+        url = `${username}`;
         break;
       case 'instagram':
-        url = `https://instagram.com/${username}`;
+        url = `${username}`;
         break;
       case 'twitter':
         url = `https://twitter.com/${username}`;
         break;
       case 'linkedin':
-        url = `https://linkedin.com/in/${username}`;
+        url = `${username}`;
         break;
       case 'whatsapp':
         // Assuming username is a phone number
